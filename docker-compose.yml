@@ -1,0 +1,138 @@
+# Kochi Healthcare WebGIS - core spatial stack
+#
+#   postgis         PostgreSQL 16 + PostGIS 3.5 + pgRouting 3.8
+#   geoserver       GeoServer 2.28.3 (WMS / WFS / WCS / SLD)
+#   pg_tileserv     Mapbox Vector Tiles straight from PostGIS
+#   pg_featureserv  OGC API - Features straight from PostGIS
+#
+# Containers talk to each other ONLY through Docker service hostnames on the
+# "webgis_net" bridge network (postgis:5432, geoserver:8080, pg_tileserv:7800,
+# pg_featureserv:9000). Host ports below are only for your browser / psql.
+# The "127.0.0.1" inside healthchecks means "this same container", which is
+# how Docker healthchecks work; no container uses it to reach another one.
+#
+# Usage (PowerShell):  Copy-Item .env.example .env ;  docker compose up -d
+
+name: kochi-healthcare-webgis
+
+services:
+  postgis:
+    image: pgrouting/pgrouting:16-3.5-3.8
+    container_name: kochi_postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Asia/Kolkata
+    ports:
+      - "${POSTGIS_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs once, on first initialisation of an empty volume (after the image's
+      # own 10_postgis.sh), to enable PostGIS + pgRouting in ${POSTGRES_DB}.
+      - ./sql/00_init_extensions.sql:/docker-entrypoint-initdb.d/20_init_extensions.sql:ro
+      # Later-stage SQL files, available inside the container at /sql for psql -f.
+      - ./sql:/sql:ro
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h 127.0.0.1 -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - webgis_net
+
+  geoserver:
+    image: kartoza/geoserver:2.28.3
+    container_name: kochi_geoserver
+    entrypoint: ["/bin/bash", "-c", "mkdir -p /opt/geoserver/data_dir && [ -f /opt/geoserver/data_dir/security/usergroup/default/users.xml ] || cp -r /usr/local/tomcat/security /usr/local/tomcat/workspaces /usr/local/tomcat/styles /usr/local/tomcat/layergroups /usr/local/tomcat/palettes /usr/local/tomcat/plugIns /usr/local/tomcat/user_projections /usr/local/tomcat/*.xml /opt/geoserver/data_dir/ 2>/dev/null || true; sed -i '/name=\"admin\"/s/password=\"[^\"]*\"/password=\"plain:'\"$GEOSERVER_ADMIN_PASSWORD\"'\"/' /opt/geoserver/data_dir/security/usergroup/default/users.xml; printf '%s\n' '<?xml version=\"1.0\" encoding=\"UTF-8\"?><web-app xmlns=\"http://xmlns.jcp.org/xml/ns/javaee\" version=\"4.0\"><filter><filter-name>CorsFilter</filter-name><filter-class>org.apache.catalina.filters.CorsFilter</filter-class><init-param><param-name>cors.allowed.origins</param-name><param-value>*</param-value></init-param><init-param><param-name>cors.allowed.methods</param-name><param-value>GET,POST,HEAD,OPTIONS,PUT,DELETE</param-value></init-param><init-param><param-name>cors.support.credentials</param-name><param-value>false</param-value></init-param></filter><filter-mapping><filter-name>CorsFilter</filter-name><url-pattern>/*</url-pattern></filter-mapping></web-app>' > /usr/local/tomcat/conf/web.xml; export JAVA_OPTS=\"-Djava.awt.headless=true -server -Xms${INITIAL_MEMORY:-1G} -Xmx${MAXIMUM_MEMORY:-2G} -DGEOSERVER_DATA_DIR=/opt/geoserver/data_dir -Dorg.geotools.referencing.forceXY=true -Dfile.encoding=UTF-8 -Duser.timezone=${TZ:-Asia/Kolkata}\"; exec /usr/local/tomcat/bin/catalina.sh run"]
+    restart: unless-stopped
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+      GEOSERVER_DATA_DIR: /opt/geoserver/data_dir
+      INITIAL_MEMORY: ${GEOSERVER_INITIAL_MEMORY:-1G}
+      MAXIMUM_MEMORY: ${GEOSERVER_MAXIMUM_MEMORY:-2G}
+      SAMPLE_DATA: "false"
+      STABLE_EXTENSIONS: ${GEOSERVER_STABLE_EXTENSIONS:-}
+      # CORS so the Leaflet client can call WFS with fetch() from another origin.
+      CORS_ENABLED: "true"
+      CORS_ALLOWED_ORIGINS: "*"
+      CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,HEAD,OPTIONS"
+      CORS_ALLOWED_HEADERS: "*"
+      TZ: Asia/Kolkata
+      # When you create the PostGIS store in the GeoServer UI later, use
+      #   host = postgis   port = 5432   database = ${POSTGRES_DB}
+    ports:
+      - "${GEOSERVER_PORT:-8088}:8080"
+    volumes:
+      - geoserver_data:/opt/geoserver/data_dir
+      - ./sld:/opt/sld:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --output /dev/null -u \"$${GEOSERVER_ADMIN_USER}:$${GEOSERVER_ADMIN_PASSWORD}\" http://127.0.0.1:8080/geoserver/rest/about/version.xml || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    networks:
+      - webgis_net
+
+  pg_tileserv:
+    image: pramsey/pg_tileserv:latest
+    container_name: kochi_pg_tileserv
+    restart: unless-stopped
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgis:5432/${POSTGRES_DB}?sslmode=disable
+      TS_HTTPPORT: "7800"
+    ports:
+      - "${PG_TILESERV_PORT:-7800}:7800"
+    healthcheck:
+      # The image is minimal; try wget, then curl, then a raw TCP probe.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:7800/index.json 2>/dev/null || curl -fsS -o /dev/null http://127.0.0.1:7800/index.json 2>/dev/null || bash -c 'exec 3<>/dev/tcp/127.0.0.1/7800' 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - webgis_net
+
+  pg_featureserv:
+    image: pramsey/pg_featureserv:latest
+    container_name: kochi_pg_featureserv
+    restart: unless-stopped
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgis:5432/${POSTGRES_DB}?sslmode=disable
+      PGFS_SERVER_HTTPPORT: "9000"
+    ports:
+      - "${PG_FEATURESERV_PORT:-9000}:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9000/collections.json 2>/dev/null || curl -fsS -o /dev/null http://127.0.0.1:9000/collections.json 2>/dev/null || bash -c 'exec 3<>/dev/tcp/127.0.0.1/9000' 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - webgis_net
+
+networks:
+  webgis_net:
+    name: kochi_webgis_net
+    driver: bridge
+
+volumes:
+  pgdata:
+    name: kochi_pgdata
+  geoserver_data:
+    name: kochi_geoserver_data

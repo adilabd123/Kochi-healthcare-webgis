@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "study_area",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "Edappally + Palarivattom + Kaloor (Kochi Municipal Corporation)", "source": "bbox_fallback", "wards_found": "none", "area_km2": 20.8, "center_lat": 10.008, "center_lon": 76.302 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 76.320149682600558, 9.984418452448082 ], [ 76.320339670587671, 10.031437652272142 ], [ 76.283847788151832, 10.031580855505691 ], [ 76.283663047536024, 9.984560971181082 ], [ 76.320149682600558, 9.984418452448082 ] ] ] } }
+]
+}
