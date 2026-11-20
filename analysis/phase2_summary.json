@@ -1,0 +1,526 @@
+{
+  "generated_at_utc": "2026-11-20T21:25:41+00:00",
+  "inputs": {
+    "source": "postgis",
+    "graphml": "kochi_walk_2km.graphml",
+    "study_area_km2": 20.8,
+    "healthcare_points": 93,
+    "healthcare_by_type": {
+      "hospital": 32,
+      "pharmacy": 28,
+      "clinic": 16,
+      "alternative": 4,
+      "laboratory": 4,
+      "dentist": 3,
+      "centre": 2,
+      "yes": 2,
+      "hospice": 1,
+      "psychotherapist": 1
+    },
+    "buildings": 5321,
+    "walk_nodes": 11665,
+    "walk_segments_undirected": 13880
+  },
+  "parameters": {
+    "speeds_kmh": [
+      4.8,
+      3.6
+    ],
+    "primary_speed_kmh": 4.8,
+    "minutes": [
+      5,
+      10,
+      15
+    ],
+    "service_area_edge_buffer_m": 50.0,
+    "metric_crs": "EPSG:32643",
+    "network_distance": "snap(building->node) + shortest path + snap(node->facility), undirected walk graph"
+  },
+  "snapping": {
+    "facility_snap_m": {
+      "median": 25.8,
+      "max": 92.8,
+      "count_over_250m": 0
+    },
+    "building_snap_m": {
+      "median": 30.6,
+      "p95": 69.9
+    }
+  },
+  "facility_sets": {
+    "all": {
+      "description": "All healthcare points (amenity=hospital|clinic|doctors, healthcare=*)",
+      "facilities": 93,
+      "distinct_snap_nodes": 90,
+      "buildings_unreachable": 0,
+      "network_dist_m": {
+        "median": 429.0,
+        "p90": 849.9,
+        "max": 2068.0
+      },
+      "straight_line_dist_m": {
+        "median": 229.0,
+        "p90": 518.7
+      },
+      "detour_ratio_network_over_straight_line": {
+        "note": "buildings with straight-line distance >= 100 m",
+        "median": 1.694,
+        "p90": 2.63
+      },
+      "by_speed": {
+        "4.8_kmh": {
+          "metres_per_minute": 80.0,
+          "time_min": {
+            "median": 5.4,
+            "p90": 10.6
+          },
+          "thresholds": {
+            "5_min": {
+              "distance_m": 400.0,
+              "area_km2": 10.4919,
+              "area_in_study_km2": 9.9574,
+              "pct_of_study_area": 47.87,
+              "buildings_within": 2387,
+              "pct_buildings": 44.86,
+              "healthcare_points_within": 93,
+              "pct_healthcare_points": 100.0,
+              "buildings_within_straight_line": 4258,
+              "pct_buildings_straight_line": 80.02,
+              "straight_line_overestimate_pct_points": 35.16
+            },
+            "10_min": {
+              "distance_m": 800.0,
+              "area_km2": 20.4374,
+              "area_in_study_km2": 17.1282,
+              "pct_of_study_area": 82.35,
+              "buildings_within": 4674,
+              "pct_buildings": 87.84,
+              "healthcare_points_within": 93,
+              "pct_healthcare_points": 100.0,
+              "buildings_within_straight_line": 5199,
+              "pct_buildings_straight_line": 97.71,
+              "straight_line_overestimate_pct_points": 9.87
+            },
+            "15_min": {
+              "distance_m": 1200.0,
+              "area_km2": 26.444,
+              "area_in_study_km2": 18.7633,
+              "pct_of_study_area": 90.21,
+              "buildings_within": 5178,
+              "pct_buildings": 97.31,
+              "healthcare_points_within": 93,
+              "pct_healthcare_points": 100.0,
+              "buildings_within_straight_line": 5320,
+              "pct_buildings_straight_line": 99.98,
+              "straight_line_overestimate_pct_points": 2.67
+            }
+          }
+        },
+        "3.6_kmh": {
+          "metres_per_minute": 60.0,
+          "time_min": {
+            "median": 7.2,
+            "p90": 14.2
+          },
+          "thresholds": {
+            "5_min": {
+              "distance_m": 300.0,
+              "area_km2": 7.4542,
+              "area_in_study_km2": 7.2165,
+              "pct_of_study_area": 34.69,
+              "buildings_within": 1553,
+              "pct_buildings": 29.19,
+              "healthcare_points_within": 93,
+              "pct_healthcare_points": 100.0,
+              "buildings_within_straight_line": 3399,
+              "pct_buildings_straight_line": 63.88,
+              "straight_line_overestimate_pct_points": 34.69
+            },
+            "10_min": {
+              "distance_m": 600.0,
+              "area_km2": 16.0053,
+              "area_in_study_km2": 14.3955,
+              "pct_of_study_area": 69.21,
+              "buildings_within": 3851,
+              "pct_buildings": 72.37,
+              "healthcare_points_within": 93,
+              "pct_healthcare_points": 100.0,
+              "buildings_within_straight_line": 4986,
+              "pct_buildings_straight_line": 93.7,
+              "straight_line_overestimate_pct_points": 21.33
+            },
+            "15_min": {
+              "distance_m": 900.0,
+              "area_km2": 22.1573,
+              "area_in_study_km2": 17.8355,
+              "pct_of_study_area": 85.75,
+              "buildings_within": 4895,
+              "pct_buildings": 91.99,
+              "healthcare_points_within": 93,
+              "pct_healthcare_points": 100.0,
+              "buildings_within_straight_line": 5267,
+              "pct_buildings_straight_line": 98.99,
+              "straight_line_overestimate_pct_points": 7.0
+            }
+          }
+        }
+      },
+      "catchment_top5": [
+        {
+          "id": 68,
+          "name": "Cee Ess English Medicals",
+          "type": "pharmacy",
+          "buildings": 280
+        },
+        {
+          "id": 19,
+          "name": "Rite Cure Health Services",
+          "type": "clinic",
+          "buildings": 278
+        },
+        {
+          "id": 8,
+          "name": "Alexander Eye Centre",
+          "type": "clinic",
+          "buildings": 223
+        },
+        {
+          "id": 38,
+          "name": "Focus Eye Hospital",
+          "type": "hospital",
+          "buildings": 223
+        },
+        {
+          "id": 12,
+          "name": "Dr.Rajeev's clinic",
+          "type": "clinic",
+          "buildings": 203
+        }
+      ]
+    },
+    "hospital": {
+      "description": "Healthcare points with type = hospital",
+      "facilities": 32,
+      "distinct_snap_nodes": 32,
+      "buildings_unreachable": 0,
+      "network_dist_m": {
+        "median": 708.0,
+        "p90": 1254.1,
+        "max": 2565.7
+      },
+      "straight_line_dist_m": {
+        "median": 422.9,
+        "p90": 859.6
+      },
+      "detour_ratio_network_over_straight_line": {
+        "note": "buildings with straight-line distance >= 100 m",
+        "median": 1.591,
+        "p90": 2.433
+      },
+      "by_speed": {
+        "4.8_kmh": {
+          "metres_per_minute": 80.0,
+          "time_min": {
+            "median": 8.9,
+            "p90": 15.7
+          },
+          "thresholds": {
+            "5_min": {
+              "distance_m": 400.0,
+              "area_km2": 5.0941,
+              "area_in_study_km2": 4.9092,
+              "pct_of_study_area": 23.6,
+              "buildings_within": 968,
+              "pct_buildings": 18.19,
+              "healthcare_points_within": 56,
+              "pct_healthcare_points": 60.22,
+              "buildings_within_straight_line": 2482,
+              "pct_buildings_straight_line": 46.65,
+              "straight_line_overestimate_pct_points": 28.46
+            },
+            "10_min": {
+              "distance_m": 800.0,
+              "area_km2": 14.4386,
+              "area_in_study_km2": 12.5114,
+              "pct_of_study_area": 60.15,
+              "buildings_within": 3146,
+              "pct_buildings": 59.12,
+              "healthcare_points_within": 76,
+              "pct_healthcare_points": 81.72,
+              "buildings_within_straight_line": 4586,
+              "pct_buildings_straight_line": 86.19,
+              "straight_line_overestimate_pct_points": 27.07
+            },
+            "15_min": {
+              "distance_m": 1200.0,
+              "area_km2": 22.6128,
+              "area_in_study_km2": 17.2439,
+              "pct_of_study_area": 82.9,
+              "buildings_within": 4638,
+              "pct_buildings": 87.16,
+              "healthcare_points_within": 92,
+              "pct_healthcare_points": 98.92,
+              "buildings_within_straight_line": 5275,
+              "pct_buildings_straight_line": 99.14,
+              "straight_line_overestimate_pct_points": 11.98
+            }
+          }
+        },
+        "3.6_kmh": {
+          "metres_per_minute": 60.0,
+          "time_min": {
+            "median": 11.8,
+            "p90": 20.9
+          },
+          "thresholds": {
+            "5_min": {
+              "distance_m": 300.0,
+              "area_km2": 3.2988,
+              "area_in_study_km2": 3.2434,
+              "pct_of_study_area": 15.59,
+              "buildings_within": 538,
+              "pct_buildings": 10.11,
+              "healthcare_points_within": 48,
+              "pct_healthcare_points": 51.61,
+              "buildings_within_straight_line": 1716,
+              "pct_buildings_straight_line": 32.25,
+              "straight_line_overestimate_pct_points": 22.14
+            },
+            "10_min": {
+              "distance_m": 600.0,
+              "area_km2": 9.4291,
+              "area_in_study_km2": 8.6296,
+              "pct_of_study_area": 41.49,
+              "buildings_within": 2047,
+              "pct_buildings": 38.47,
+              "healthcare_points_within": 62,
+              "pct_healthcare_points": 66.67,
+              "buildings_within_straight_line": 3825,
+              "pct_buildings_straight_line": 71.88,
+              "straight_line_overestimate_pct_points": 33.41
+            },
+            "15_min": {
+              "distance_m": 900.0,
+              "area_km2": 16.7972,
+              "area_in_study_km2": 14.1532,
+              "pct_of_study_area": 68.04,
+              "buildings_within": 3636,
+              "pct_buildings": 68.33,
+              "healthcare_points_within": 83,
+              "pct_healthcare_points": 89.25,
+              "buildings_within_straight_line": 4927,
+              "pct_buildings_straight_line": 92.6,
+              "straight_line_overestimate_pct_points": 24.27
+            }
+          }
+        }
+      },
+      "catchment_top5": [
+        {
+          "id": 48,
+          "name": "Primary Health Centre Thrikakkara",
+          "type": "hospital",
+          "buildings": 574
+        },
+        {
+          "id": 36,
+          "name": "Ephphatha Softech എഫഥാ സ്പീച്ച് ആന്റ് ഹിയറിങ് സെന്റർ",
+          "type": "hospital",
+          "buildings": 389
+        },
+        {
+          "id": 46,
+          "name": "MAJ Hospital",
+          "type": "hospital",
+          "buildings": 374
+        },
+        {
+          "id": 56,
+          "name": "Vasan Eye Care Hospital, Palarivattom",
+          "type": "hospital",
+          "buildings": 352
+        },
+        {
+          "id": 38,
+          "name": "Focus Eye Hospital",
+          "type": "hospital",
+          "buildings": 307
+        }
+      ]
+    },
+    "clinical": {
+      "description": "All healthcare points except type pharmacy and laboratory",
+      "facilities": 61,
+      "distinct_snap_nodes": 60,
+      "buildings_unreachable": 0,
+      "network_dist_m": {
+        "median": 504.6,
+        "p90": 928.8,
+        "max": 2260.2
+      },
+      "straight_line_dist_m": {
+        "median": 275.1,
+        "p90": 568.3
+      },
+      "detour_ratio_network_over_straight_line": {
+        "note": "buildings with straight-line distance >= 100 m",
+        "median": 1.698,
+        "p90": 2.66
+      },
+      "by_speed": {
+        "4.8_kmh": {
+          "metres_per_minute": 80.0,
+          "time_min": {
+            "median": 6.3,
+            "p90": 11.6
+          },
+          "thresholds": {
+            "5_min": {
+              "distance_m": 400.0,
+              "area_km2": 8.4685,
+              "area_in_study_km2": 8.1081,
+              "pct_of_study_area": 38.98,
+              "buildings_within": 1840,
+              "pct_buildings": 34.58,
+              "healthcare_points_within": 85,
+              "pct_healthcare_points": 91.4,
+              "buildings_within_straight_line": 3917,
+              "pct_buildings_straight_line": 73.61,
+              "straight_line_overestimate_pct_points": 39.03
+            },
+            "10_min": {
+              "distance_m": 800.0,
+              "area_km2": 18.6729,
+              "area_in_study_km2": 16.1839,
+              "pct_of_study_area": 77.81,
+              "buildings_within": 4415,
+              "pct_buildings": 82.97,
+              "healthcare_points_within": 92,
+              "pct_healthcare_points": 98.92,
+              "buildings_within_straight_line": 5181,
+              "pct_buildings_straight_line": 97.37,
+              "straight_line_overestimate_pct_points": 14.4
+            },
+            "15_min": {
+              "distance_m": 1200.0,
+              "area_km2": 25.4238,
+              "area_in_study_km2": 18.5689,
+              "pct_of_study_area": 89.27,
+              "buildings_within": 5133,
+              "pct_buildings": 96.47,
+              "healthcare_points_within": 93,
+              "pct_healthcare_points": 100.0,
+              "buildings_within_straight_line": 5318,
+              "pct_buildings_straight_line": 99.94,
+              "straight_line_overestimate_pct_points": 3.47
+            }
+          }
+        },
+        "3.6_kmh": {
+          "metres_per_minute": 60.0,
+          "time_min": {
+            "median": 8.4,
+            "p90": 15.5
+          },
+          "thresholds": {
+            "5_min": {
+              "distance_m": 300.0,
+              "area_km2": 5.7273,
+              "area_in_study_km2": 5.5536,
+              "pct_of_study_area": 26.7,
+              "buildings_within": 1139,
+              "pct_buildings": 21.41,
+              "healthcare_points_within": 78,
+              "pct_healthcare_points": 83.87,
+              "buildings_within_straight_line": 2948,
+              "pct_buildings_straight_line": 55.4,
+              "straight_line_overestimate_pct_points": 33.99
+            },
+            "10_min": {
+              "distance_m": 600.0,
+              "area_km2": 13.9552,
+              "area_in_study_km2": 12.8447,
+              "pct_of_study_area": 61.75,
+              "buildings_within": 3400,
+              "pct_buildings": 63.9,
+              "healthcare_points_within": 88,
+              "pct_healthcare_points": 94.62,
+              "buildings_within_straight_line": 4900,
+              "pct_buildings_straight_line": 92.09,
+              "straight_line_overestimate_pct_points": 28.19
+            },
+            "15_min": {
+              "distance_m": 900.0,
+              "area_km2": 20.5102,
+              "area_in_study_km2": 17.1289,
+              "pct_of_study_area": 82.35,
+              "buildings_within": 4729,
+              "pct_buildings": 88.87,
+              "healthcare_points_within": 92,
+              "pct_healthcare_points": 98.92,
+              "buildings_within_straight_line": 5236,
+              "pct_buildings_straight_line": 98.4,
+              "straight_line_overestimate_pct_points": 9.53
+            }
+          }
+        }
+      },
+      "catchment_top5": [
+        {
+          "id": 19,
+          "name": "Rite Cure Health Services",
+          "type": "clinic",
+          "buildings": 437
+        },
+        {
+          "id": 12,
+          "name": "Dr.Rajeev's clinic",
+          "type": "clinic",
+          "buildings": 305
+        },
+        {
+          "id": 38,
+          "name": "Focus Eye Hospital",
+          "type": "hospital",
+          "buildings": 294
+        },
+        {
+          "id": 18,
+          "name": "Quick Heal Homeopathic Clinic",
+          "type": "clinic",
+          "buildings": 248
+        },
+        {
+          "id": 8,
+          "name": "Alexander Eye Centre",
+          "type": "clinic",
+          "buildings": 223
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Healthcare points were extracted only inside the study area, so buildings near its edge may in reality be closer to facilities just outside it (edge effect).",
+    "Building access uses one representative point per footprint and straight-line snapping to the nearest walk node.",
+    "Service-area polygons are reached street segments buffered by the edge buffer; they approximate, not exactly delimit, the walkable area. Building coverage figures come from each building's own network distance, not from overlaying the polygons, so a few counted buildings set back more than the buffer from a street fall outside them.",
+    "Walking speed is constant; slopes, crossings, footpath condition and weather are ignored.",
+    "OSM 'hospital' tags may include clinics or primary health centres (see Q3)."
+  ],
+  "outputs": [
+    "phase2_accessibility_32643.gpkg",
+    "phase2_service_areas_4326.geojson",
+    "phase2_facility_access_4326.geojson",
+    "phase2_summary.json"
+  ],
+  "runtime_s": 22.1,
+  "postgis_tables": [
+    "service_areas_32643",
+    "service_areas_4326",
+    "building_access_32643",
+    "building_access_4326",
+    "facility_access_32643",
+    "facility_access_4326",
+    "node_access_32643",
+    "node_access_4326"
+  ]
+}
