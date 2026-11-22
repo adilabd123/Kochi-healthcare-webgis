@@ -1,0 +1,2 @@
+pmtiles>=3.4,<4
+psycopg2-binary>=2.9

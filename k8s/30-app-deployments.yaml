@@ -1,44 +1,95 @@
-﻿apiVersion: apps/v1
+# Stateless services as Deployments + Services (Q11).
+# Pods reach the database through the in-cluster service name "postgis"
+# (never localhost). Credentials come only from the db-credentials Secret;
+# DATABASE_URL is assembled with Kubernetes $(VAR) substitution.
+# GeoServer (a 2 GB JVM with its own catalog) stays in Docker Compose; the
+# browser-facing PUBLIC_GEOSERVER_URL points there, and in-cluster
+# GEOSERVER_INTERNAL_URL uses the service name "geoserver" (absent in this
+# cluster, so /api/health reports it as unreachable - expected).
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api
   namespace: kochi-webgis
+  labels:
+    app: api
+    app.kubernetes.io/part-of: kochi-healthcare-webgis
 spec:
   replicas: 2
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       app: api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:
         app: api
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
       containers:
         - name: api
           image: kochi-healthcare-api:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Never          # image is side-loaded with "kind load docker-image"
           ports:
-            - containerPort: 8000
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: db-credentials
           env:
             - name: POSTGRES_HOST
               value: postgis
             - name: POSTGRES_PORT
               value: "5432"
-          envFrom:
-            - secretRef:
-                name: db-credentials
+            - name: GEOSERVER_INTERNAL_URL
+              value: http://geoserver:8080/geoserver
+            - name: GEOSERVER_WORKSPACE
+              value: kochi
+            # URLs handed to the browser on the Windows host (kind port mappings)
+            - name: PUBLIC_TILESERV_URL
+              value: http://localhost:17800
+            - name: PUBLIC_FEATURESERV_URL
+              value: http://localhost:19000
+            - name: PUBLIC_GEOSERVER_URL
+              value: http://localhost:8088/geoserver
+            - name: NOMINATIM_USER_AGENT
+              value: kochi-healthcare-webgis/1.0 (student project; kind cluster)
+            - name: TZ
+              value: Asia/Kolkata
           readinessProbe:
             httpGet:
-              path: /api/config
-              port: 8000
+              path: /api/config       # needs the database -> pod only gets traffic when DB is reachable
+              port: http
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http              # restart only if the process stops listening
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: api
   namespace: kochi-webgis
+  labels:
+    app: api
 spec:
   type: NodePort
   selector:
@@ -46,7 +97,7 @@ spec:
   ports:
     - name: http
       port: 8000
-      targetPort: 8000
+      targetPort: http
       nodePort: 30080
 ---
 apiVersion: apps/v1
@@ -54,6 +105,9 @@ kind: Deployment
 metadata:
   name: pg-tileserv
   namespace: kochi-webgis
+  labels:
+    app: pg-tileserv
+    app.kubernetes.io/part-of: kochi-healthcare-webgis
 spec:
   replicas: 1
   selector:
@@ -67,29 +121,64 @@ spec:
       containers:
         - name: pg-tileserv
           image: pramsey/pg_tileserv:latest
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 7800
+            - name: http
+              containerPort: 7800
           env:
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: db-credentials, key: POSTGRES_USER } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: db-credentials, key: POSTGRES_PASSWORD } }
+            - name: POSTGRES_DB
+              valueFrom: { secretKeyRef: { name: db-credentials, key: POSTGRES_DB } }
             - name: DATABASE_URL
-              value: postgresql://postgres:change-me-local-only@postgis:5432/kochi_health
+              value: postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgis:5432/$(POSTGRES_DB)?sslmode=disable
+            - name: TS_HTTPPORT
+              value: "7800"
+          readinessProbe:
+            httpGet:
+              path: /index.json
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: pg-tileserv
   namespace: kochi-webgis
+  labels:
+    app: pg-tileserv
 spec:
+  type: NodePort
   selector:
     app: pg-tileserv
   ports:
-    - port: 7800
-      targetPort: 7800
+    - name: http
+      port: 7800
+      targetPort: http
+      nodePort: 30780
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pg-featureserv
   namespace: kochi-webgis
+  labels:
+    app: pg-featureserv
+    app.kubernetes.io/part-of: kochi-healthcare-webgis
 spec:
   replicas: 1
   selector:
@@ -103,20 +192,52 @@ spec:
       containers:
         - name: pg-featureserv
           image: pramsey/pg_featureserv:latest
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 9000
+            - name: http
+              containerPort: 9000
           env:
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: db-credentials, key: POSTGRES_USER } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: db-credentials, key: POSTGRES_PASSWORD } }
+            - name: POSTGRES_DB
+              valueFrom: { secretKeyRef: { name: db-credentials, key: POSTGRES_DB } }
             - name: DATABASE_URL
-              value: postgresql://postgres:change-me-local-only@postgis:5432/kochi_health
+              value: postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgis:5432/$(POSTGRES_DB)?sslmode=disable
+            - name: PGFS_SERVER_HTTPPORT
+              value: "9000"
+          readinessProbe:
+            httpGet:
+              path: /collections.json
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: pg-featureserv
   namespace: kochi-webgis
+  labels:
+    app: pg-featureserv
 spec:
+  type: NodePort
   selector:
     app: pg-featureserv
   ports:
-    - port: 9000
-      targetPort: 9000
+    - name: http
+      port: 9000
+      targetPort: http
+      nodePort: 30900

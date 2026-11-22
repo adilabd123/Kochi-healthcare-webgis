@@ -1,0 +1,176 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261123012311
+Username: DESKTOP-GVQ7EAO\MASTER
+RunAs User: DESKTOP-GVQ7EAO\MASTER
+Configuration Name: 
+Machine: DESKTOP-GVQ7EAO (Microsoft Windows NT 10.0.22631.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe
+Process ID: 15688
+PSVersion: 5.1.22621.6133
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.22621.6133
+BuildVersion: 10.0.22621.6133
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is .\analysis\phase5_q11_output.txt
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) # 1. Recreate kind cluster and load local/cached images
+PS F:\Kochi-healthcare-webgis>
+(.venv) kind delete cluster --name kochi-webgis
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kind create cluster --config k8s/kind-config.yaml
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl get nodes
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kind load docker-image kochi-healthcare-api:latest pgrouting/pgrouting:16-3.5-3.8 pramsey/pg_tileserv:latest pramsey/pg_featureserv:latest --name kochi-webgis
+
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) # 2. Deploy PostGIS StatefulSet and restore kochi_health
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl apply -f k8s/00-namespace.yaml -f k8s/10-secret-example.yaml -f k8s/20-postgis-statefulset.yaml
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis rollout status statefulset/postgis --timeout=300s
+
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker exec kochi_postgis pg_dump -U postgres -d kochi_health -Fc --no-owner --no-privileges -f /tmp/kochi_health.dump
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker cp kochi_postgis:/tmp/kochi_health.dump kochi_health.dump
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis cp kochi_health.dump postgis-0:/tmp/kochi_health.dump
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis exec postgis-0 -- dropdb -U postgres --if-exists kochi_health
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis exec postgis-0 -- createdb -U postgres kochi_health
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis exec postgis-0 -- pg_restore -U postgres -d kochi_health --no-owner --no-privileges /tmp/kochi_health.dump
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis exec postgis-0 -- psql -U postgres -d kochi_health -c "SELECT (SELECT count(*) FROM facility_access_4326) AS fac, (SELECT count(*) FROM building_access_4326) AS bld, (SELECT count(*) FROM walk_edges_32643) AS edges, pgr_version();"
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) Remove-Item kochi_health.dump
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) # 3. Deploy API, pg_tileserv, and pg_featureserv
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl apply -f k8s/30-app-deployments.yaml
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis rollout status deploy/api --timeout=180s
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl get pods,svc,pvc -n kochi-webgis -o wide
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) curl.exe -s http://localhost:18080/api/health
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) curl.exe -s -o NUL -w "tileserv %{http_code}`n" http://localhost:17800/index.json
+
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) # 4. API Deployment self-healing test
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis get pods -l app=api
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) $pod = kubectl -n kochi-webgis get pods -l app=api -o jsonpath='{.items[0].metadata.name}'
+PS F:\Kochi-healthcare-webgis>
+(.venv) Measure-Command {
+  kubectl -n kochi-webgis delete pod $pod
+  kubectl -n kochi-webgis rollout status deploy/api --timeout=180s
+} | Select-Object TotalSeconds
+
+TotalSeconds
+------------
+ 181.2650011
+
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis get pods -l app=api
+
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) # 5. PostGIS StatefulSet PVC persistence test
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis exec postgis-0 -- psql -U postgres -d kochi_health -c "CREATE TABLE IF NOT EXISTS k8s_persistence_test(id serial PRIMARY KEY, note text, created_at timestamptz DEFAULT now()); INSERT INTO k8s_persistence_test(note) VALUES ('before postgis-0 deletion'); SELECT * FROM k8s_persistence_test;"
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) $oldUid = kubectl -n kochi-webgis get pod postgis-0 -o jsonpath='{.metadata.uid}'
+PS F:\Kochi-healthcare-webgis>
+(.venv) "Old pod UID: $oldUid"
+Old pod UID: f02794c9-c333-446e-9d0f-c332558e7bb0
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis get pvc data-postgis-0 -o jsonpath='{.spec.volumeName}'; ""
+pvc-afb10586-ff70-4b20-9379-d8308dc72189
+
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) $tPostgis = Measure-Command {
+  kubectl -n kochi-webgis delete pod postgis-0
+  do {
+    Start-Sleep -Seconds 2
+    $curUid = kubectl -n kochi-webgis get pod postgis-0 -o jsonpath='{.metadata.uid}' 2>$null
+  } until ($curUid -and $curUid -ne $oldUid)
+  kubectl -n kochi-webgis wait --for=condition=Ready pod/postgis-0 --timeout=300s
+}
+PS F:\Kochi-healthcare-webgis>
+(.venv) "PostGIS recovery seconds: $($tPostgis.TotalSeconds)"
+PostGIS recovery seconds: 14.4325704
+PS F:\Kochi-healthcare-webgis>
+(.venv) $newUid = kubectl -n kochi-webgis get pod postgis-0 -o jsonpath='{.metadata.uid}'
+PS F:\Kochi-healthcare-webgis>
+(.venv) "New pod UID: $newUid"
+New pod UID: 6c051c91-c011-455d-96a4-b1e24f9a5e8c
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis get pvc data-postgis-0 -o jsonpath='{.spec.volumeName}'; ""
+pvc-afb10586-ff70-4b20-9379-d8308dc72189
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis exec postgis-0 -- psql -U postgres -d kochi_health -c "SELECT * FROM k8s_persistence_test; SELECT count(*) FROM building_access_4326;"
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) kubectl -n kochi-webgis get events --sort-by=.lastTimestamp | Select-Object -Last 15
+3m20s       Normal    Scheduled               pod/api-5648469d4d-4x7xm               Successfully assigned kochi-webgis/api-5648469d4d-4x7xm to kochi-webgis-control-plane
+81s         Warning   ErrImageNeverPull       pod/api-5648469d4d-f2mf6               Container image "kochi-healthcare-api:latest" is not present with pull policy of Never
+73s         Warning   Failed                  pod/api-5648469d4d-4x7xm               Error: ErrImageNeverPull
+62s         Warning   ErrImageNeverPull       pod/api-5648469d4d-4x7xm               Container image "kochi-healthcare-api:latest" is not present with pull policy of Never
+16s         Normal    Killing                 pod/postgis-0                          Stopping container postgis
+13s         Normal    Scheduled               pod/postgis-0                          Successfully assigned kochi-webgis/postgis-0 to kochi-webgis-control-plane
+13s         Normal    SuccessfulCreate        statefulset/postgis                    Create Pod postgis-0 in StatefulSet postgis successful
+12s         Normal    Pulled                  pod/postgis-0                          Container image "pgrouting/pgrouting:16-3.5-3.8" already present on machine and can be accessed by the pod
+12s         Normal    Created                 pod/postgis-0                          Container created
+12s         Normal    Started                 pod/postgis-0                          Container started
+8s          Warning   Unhealthy               pod/pg-tileserv-ff89bd664-l82hv        Readiness probe failed: HTTP probe failed with statuscode: 500
+6s          Warning   Unhealthy               pod/pg-featureserv-59b7b4c576-54bxn    Readiness probe failed: Get "http://10.244.0.10:9000/collections.json": EOF
+5s          Normal    Created                 pod/pg-featureserv-59b7b4c576-54bxn    Container created
+5s          Normal    Started                 pod/pg-featureserv-59b7b4c576-54bxn    Container started
+5s          Normal    Pulled                  pod/pg-featureserv-59b7b4c576-54bxn    Container image "pramsey/pg_featureserv:latest" already present on machine and can be accessed by the pod
+PS F:\Kochi-healthcare-webgis>
+(.venv) Start-Sleep -Seconds 3
+PS F:\Kochi-healthcare-webgis>
+(.venv) curl.exe -s http://localhost:18080/api/health
+
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) Stop-Transcript
+**********************
+Windows PowerShell transcript end
+End time: 20261123013632
+**********************

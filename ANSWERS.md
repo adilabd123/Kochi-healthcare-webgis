@@ -11,8 +11,8 @@ Category: Healthcare (`amenity=hospital|clinic|doctors`, `healthcare=*`). Metric
 | Healthcare points | 93 (OSM via Overpass, deduplicated; polygons converted to centroids) |
 | Buildings | 5,321 footprints (representative point inside study area) |
 | Walk network (study area + 2 km) | 11,665 nodes, 27,936 directed edges |
-| Database | PostgreSQL 16, PostGIS 3.5.2, pgRouting 3.8.0 (Docker, host port 5433) |
-| Raw outputs | `analysis/phase1_sql_run1.txt` (cold cache), `analysis/phase1_sql_run2.txt` (warm cache) |
+| Database | PostgreSQL 16.9, PostGIS 3.5.2, pgRouting 3.8.0 (Docker Compose service `postgis`, host `127.0.0.1:15432`, database `kochi_health`) |
+| Raw outputs | `analysis/phase1_sql_run1.txt` (cold cache), `analysis/phase1_sql_run2.txt` (warm cache); later phases list their own files in each section |
 
 ---
 
@@ -258,58 +258,166 @@ So these values should be quoted as "network-path to straight-line ratios includ
 
 ---
 
-## Phase 3 — Publishing and WebGIS verification
+## Q4 — Publishing with OGC services (WMS, WFS, axis order)
 
-### What was built
+Raw outputs: `analysis/phase3_publish_output.txt`, `analysis/phase3_geoserver_checks.json`, `analysis/phase3_views_output.txt`, images in `analysis/phase3_evidence/`. GeoServer 2.28.3, workspace `kochi`, datastore `kochi_postgis` (connects to `postgis:5432` inside Docker).
 
-| Component | Role | Source |
+### What was published
+
+| Layer (`kochi:`) | PostGIS source | Style |
 |---|---|---|
-| `sql/phase3_views.sql` | GiST and B-tree indexes on all serving and routing tables; views `v_hospital_access_gaps_4326` and `v_coverage_summary`; MVT function `public.building_walk_time(z, x, y, facility_set, speed_kmh)` | PostGIS |
-| GeoServer workspace `kochi` | WMS/WFS layers `study_area`, `healthcare`, `service_areas`, `building_access`, `walk_edges`, `hospital_access_gaps`, each with its SLD from `sld/` | `analysis/phase3_publish_geoserver.py` |
-| pg_tileserv | Vector tiles of buildings coloured by walking time; set and speed are chosen per request | `public.building_walk_time` |
-| pg_featureserv | OGC API – Features collections for facilities, service areas, building and node access | Phase 2 tables |
-| FastAPI (`api/`) | Nominatim geocoding (from Nearby-Services), pgRouting nearest-facility routes and isochrones from any point, coverage table, same-origin GeoServer OWS proxy, Leaflet client | `http://localhost:8000` |
+| `study_area` | `study_area_4326` | `sld/study_area.sld` |
+| `healthcare` | `facility_access_4326` | `sld/healthcare_points.sld` |
+| `service_areas` | `service_areas_4326` | `sld/service_areas.sld` (filter with `CQL_FILTER`) |
+| `building_access` | `building_access_4326` | `sld/building_access.sld` |
+| `walk_edges` | `walk_edges_4326` | `sld/walk_edges.sld` |
+| `hospital_access_gaps` | view `v_hospital_access_gaps_4326` | `sld/hospital_access_gaps.sld` |
+| `dem` (raster, Q8) | coverage store `kochi_dem` | `sld/dem_elevation.sld` |
 
-### SQL helpers (`docker exec ... -f /sql/phase3_views.sql`)
+All six vector layers appear in the WMS 1.1.1 (232,075 bytes), WMS 1.3.0 (232,157 bytes) and WFS 2.0.0 (96,861 bytes) capabilities documents (HTTP 200, 6/6 layers each).
 
-| Check | Result |
-|---|---|
-| `elderly_hospital_gap_buildings` (should equal 5,321 − 3,636 = 1,685 from Phase 2) | [PASTE REAL OUTPUT HERE] |
-| `also_gap_at_4p8` (should equal 683) | [PASTE REAL OUTPUT HERE] |
-| `tile_bytes_all_4p8` / `tile_bytes_hospital_3p6` (z15 tile 23329/15468) | [PASTE REAL OUTPUT HERE] |
+### WMS axis-order experiment (same study-area box, 600 px wide)
 
-### GeoServer evidence (`analysis/phase3_geoserver_checks.json`, `analysis/phase3_evidence/`)
-
-| Request | HTTP | Bytes / features | Interpretation |
+| Request | HTTP | PNG bytes | Result |
 |---|---|---|---|
-| WMS 1.1.1 `SRS=EPSG:4326`, BBOX lon,lat | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Map of the study area |
-| WMS 1.3.0 `CRS=EPSG:4326`, BBOX lat,lon | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Same map: correct 1.3.0 axis order |
-| WMS 1.3.0 `CRS=EPSG:4326`, BBOX lon,lat (deliberately wrong) | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Read as 76.3° N, 10.0° E (near Svalbard), so the image should be empty |
-| WMS 1.3.0 `CRS=CRS:84`, BBOX lon,lat | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | CRS:84 keeps lon,lat order in 1.3.0 |
-| WMS + `CQL_FILTER` hospital service areas @ 3.6 km/h | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Vendor filter on one layer |
-| WFS 2.0 `CQL_FILTER=type='hospital'` (data has 32) | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | |
-| WFS 2.0 FES 2.0 XML: `is_clinical = true AND hospital_t3p6_min > 10` | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Clinical facilities more than 10 elderly-minutes from a hospital |
+| WMS 1.1.1, `SRS=EPSG:4326`, `BBOX=minLon,minLat,maxLon,maxLat` | 200 | 270,216 | Map of the study area |
+| WMS 1.3.0, `CRS=EPSG:4326`, `BBOX=minLat,minLon,maxLat,maxLon` | 200 | 270,216 | Identical map (same byte count) |
+| WMS 1.3.0, `CRS=EPSG:4326`, `BBOX=minLon,minLat,maxLon,maxLat` (wrong order) | 200 | **12,098** | Empty transparent image |
+| WMS 1.3.0, `CRS=CRS:84`, `BBOX=minLon,minLat,maxLon,maxLat` | 200 | 270,216 | Identical map |
+| WMS 1.1.1 + `CQL_FILTER` (hospital service areas at 3.6 km/h) | 200 | 252,498 | Only the filtered polygons drawn |
 
-[PASTE SCREENSHOT HERE: wms130_epsg4326.png next to wms130_epsg4326_wrong_axis.png]
-
-### End-to-end check (`analysis/phase3_stack_check.json`)
-
-| Item | Result |
+| Correct WMS 1.3.0 (lat,lon) | Wrong axis order (lon,lat) |
 |---|---|
-| Checks passed | [PASTE REAL OUTPUT HERE] / 18 |
-| `api: nearest hospital` at the study centre: top facility, network m, straight m, ms | [PASTE REAL OUTPUT HERE] |
-| `api: isochrone 15 min @3.6`: area km², buildings, hospitals | [PASTE REAL OUTPUT HERE] |
-| pgRouting vs Phase 2: `/api/nearest` network m minus origin snap m, compared with `node_access_32643.hospital_dist_m` for the snapped node | [PASTE REAL OUTPUT HERE] |
+| ![WMS 1.3.0 EPSG:4326 correct](analysis/phase3_evidence/wms130_epsg4326.png) | ![WMS 1.3.0 EPSG:4326 wrong axis order](analysis/phase3_evidence/wms130_epsg4326_wrong_axis.png) |
 
-[PASTE SCREENSHOT HERE: http://localhost:8000 with buildings by walking time, service areas and a nearest-hospital route]
+![Hospital service areas at 3.6 km/h via CQL_FILTER](analysis/phase3_evidence/service_areas_hospital_3p6.png)
+
+**Interpretation.** WMS 1.1.1 always reads `x,y` as longitude, latitude. WMS 1.3.0 follows the EPSG definition of 4326, which puts **latitude first**. With the axes swapped, the 1.3.0 request asked for latitude 76.28–76.32° N and longitude 9.98–10.03° E, a box near Svalbard with no data. GeoServer still answered HTTP 200 with a valid but empty PNG, so the only clue is the byte count: 12,098 bytes against 270,216. The three correct requests return byte-identical images. `CRS:84` is the same WGS84 datum with the axes in lon,lat order, which is why web clients prefer it, or EPSG:3857, which has no ambiguity, when talking to WMS 1.3.0.
+
+### WFS 2.0 filters
+
+| Request | HTTP | Features |
+|---|---|---|
+| `GetFeature typeNames=kochi:healthcare`, `CQL_FILTER=type='hospital'` (GeoServer vendor parameter) | 200 | **32** (`numberMatched` 32, matching the 32 hospital-tagged points) |
+| POST, OGC Filter Encoding 2.0 XML: `is_clinical = true AND hospital_t3p6_min > 10` (`analysis/phase3_evidence/wfs_fes_request.xml`) | 200 | **15** |
+
+The FES query lists the clinical facilities more than a 10-minute elderly walk from any hospital-tagged facility: (unnamed), ARYA VAIDYA SHALA, Al Mekha Skin Clinic, Alexander Eye Centre, Cochin Clinical Homeo Pharmacy, DDRC SRL DIAGNOSTICS PVT LTD, Dr.Rajeev's clinic, ESI Dispensary, Eye Specialist Dr. Shivaji Clinic, NEDUMPARAMBIL CLINIC, Optima Homeocare, Quick Heal Homeopathic Clinic, Rite Cure Health Services, prayatna therapy center, raha ayurveda. Two of these, Rite Cure Health Services and Dr.Rajeev's clinic, have the two largest clinical 15-minute catchments in Phase 2 (437 and 305 buildings). So the busiest clinics are among the furthest from hospital care. CQL is shorter to write; FES is the standard, portable form that any WFS 2.0 server must accept.
+
+### Serving helpers and stack check
+
+| Check (`sql/phase3_views.sql`, `analysis/phase3_verify_stack.py`) | Result |
+|---|---|
+| `elderly_hospital_gap_buildings` (view `v_hospital_access_gaps_4326`) | **1,684** |
+| `also_gap_at_4p8` | **683** (matches Phase 2) |
+| MVT tile 15/23329/15468 from `public.building_walk_time` | 25,774 bytes (all @ 4.8 km/h), 26,171 bytes (hospital @ 3.6 km/h) |
+| Spatial tables with a GiST index | 18 |
+| End-to-end checks | **18 / 18 passed** |
+| `/api/nearest` at 10.008° N, 76.302° E | Arc Fertility Hospitals: 371.2 m network / 4.6 min vs 199.6 m straight line (origin snap 18.6 m; 52.3 ms) |
+| `/api/isochrone` 15 min | 4.8 km/h: 1.605 km², 345 buildings, 8 facilities, 3 hospital-tagged. 3.6 km/h: 0.7616 km², 118 buildings, 4 facilities, 3 hospital-tagged |
+
+The view returns 1,684 rather than the 1,685 implied by Phase 2 (5,321 − 3,636). The view tests `hospital_t3p6_min > 15`, and the minutes are stored rounded to two decimals. One building just beyond 900 m rounds to exactly 15.00 minutes and drops out. Testing `hospital_dist_m > 900` would return 1,685.
 
 ---
 
-*Study note S1 was corrected in Phase 2: Web Mercator area inflation at Kochi is 3.77 % against the WGS84 ellipsoid, not the 3.1 % that sec²φ alone predicts.*
+## Q5 — WFS 2.0 output formats: GML 3.2 vs GeoJSON
+
+Raw outputs: `analysis/phase3_q5_q7_output.txt`, `analysis/phase3_q5_q7_summary.json` (script `analysis/phase3_q5_q7_evidence.py`). The same WFS 2.0 query (`typeNames=kochi:healthcare`, `srsName=urn:ogc:def:crs:EPSG::4326`, `CQL_FILTER=name IS NOT NULL AND name <> ''`) was requested in both formats.
+
+| | GML 3.2 | GeoJSON |
+|---|---|---|
+| `numberMatched` | 88 | 88 |
+| Size | **139.12 KB** (142,460 bytes) | **52.64 KB** (53,907 bytes) |
+| Bytes per feature | ≈ 1,619 | ≈ 613 |
+| First coordinate | `<gml:pos>10.009 76.2875</gml:pos>` (lat lon) | `[76.2875, 10.009]` (lon, lat) |
+
+**Interpretation.**
+- **Count.** 88 = 93 points − the 5 unnamed ones found in Q3a, so the filter behaves exactly as expected.
+- **Size.** GML is **2.64 times larger** for the same 88 features: every value is wrapped in namespaced XML start and end tags, with a schema-bound structure.
+- **Axis order.** With the URN form of EPSG:4326, GML 3.2 follows the EPSG axis order and writes latitude first. GeoJSON (RFC 7946) always writes longitude, latitude.
+- **Takeaway.** Code that reads GML must know which axis convention the server used. That is the same trap as the WMS 1.3.0 experiment in Q4. GeoJSON is smaller and unambiguous, which is why web clients use it. GML stays useful where a typed schema and other CRSs are needed.
 
 ---
 
-## Q9 — MapLibre GL JS Client Architecture, Payload Sizes & Runtime Performance
+## Q6 — Straight-line vs network nearest facility (30 random points)
+
+Raw outputs: `analysis/phase3_q5_q7_output.txt`, `analysis/phase3_q5_q7_summary.json`, `analysis/phase3_evidence/q6_worst_barrier.png`.
+
+| Metric | Result |
+|---|---|
+| Points whose nearest facility changes between straight-line and network distance | **10 / 30 (33.3 %)** |
+| Median network ÷ straight-line distance (to each method's nearest facility) | **1.558** |
+| Maximum ratio | **4.029**, point #4 at 10.021413° N, 76.311583° E |
+| Point #4, straight-line nearest | Kripa Diabetic Clinic, 174.5 m |
+| Point #4, network nearest | Cee Ess English Medicals, 703.3 m walk (703.3 / 174.5 = 4.03) |
+
+![Worst barrier point](analysis/phase3_evidence/q6_worst_barrier.png)
+
+**Interpretation.** For one random location in three, the facility that looks nearest on a map is not the one you would reach first on foot. At point #4 the clinic 175 m away in a straight line cannot be reached directly. The fastest walk leads instead to a pharmacy more than 700 m away, so the network has no short connection across the gap. The median ratio of 1.56 is consistent with Phase 2's building-level ratios (1.59–1.70, finding 4), which also include the snapping legs to the network. Straight-line "nearest" therefore misleads both on distance and on which facility someone would actually use.
+
+---
+
+## Q7 — Coverage and the Modifiable Areal Unit Problem (H3)
+
+Raw outputs: `analysis/phase3_q5_q7_output.txt`, PostGIS tables `h3_res8_4326` and `h3_res9_4326`. Threshold: 15 min = 1,200 m at 4.8 km/h. Population proxy: building footprint area.
+
+| Unit of analysis | Cells / units | Share beyond 1,200 m |
+|---|---|---|
+| Individual buildings, **network** distance | 5,321 buildings | **2.37 %** of footprint area |
+| Individual buildings, **straight-line buffer** | 5,321 buildings | **0.09 %** of footprint area |
+| H3 resolution 8 (≈ 0.74 km² cells) | 43 cells (40 populated) | **5.31 %** of footprint area; 12.50 % of populated cells (5 of 40) |
+| H3 resolution 9 (≈ 0.105 km² cells) | 232 cells (206 populated) | **2.54 %** of footprint area; 4.37 % of populated cells (9 of 206) |
+
+| Resolution | Worst-served populated cell | Network distance | Walk at 4.8 km/h | Buildings in cell |
+|---|---|---|---|---|
+| 8 | `886004da61fffff` | 1,946.7 m | 24.3 min | 10 |
+| 9 | `896004da6afffff` | 1,918.9 m | 24.0 min | 3 |
+
+**Interpretation.**
+- **Buffers hide most of the gap.** The straight-line buffer says only 0.09 % of the building area lies beyond 15 minutes. The network says 2.37 %, **26 times more**.
+- **Scale effect (MAUP).** Each H3 cell is classified by the network distance at its centre, so every building in it inherits one value. At resolution 8 that coarse averaging more than doubles the unserved share (5.31 % against 2.37 % for buildings). At resolution 9 the result (2.54 %) is close to the building-level figure.
+- **Choosing a resolution.** The finer grid gives an answer close to the per-building truth. The coarse grid is easier to read but changes the conclusion. That is why access figures should always state their unit of aggregation, and why they should be compared at two or more scales (see S3).
+- **Agreement across scales.** Both worst-served cells lie about 1.9 km from the nearest facility, roughly a 24-minute walk. That figure is robust to resolution. Only the share of area flagged as unserved changes.
+
+---
+
+## Q8 — Raster publishing: Copernicus DEM via WMS and WCS
+
+Raw outputs: `analysis/phase4_dem_output.txt`, `analysis/phase4_dem_checks.json`, `analysis/phase4_evidence/` (script `analysis/phase4_dem_geoserver.py`).
+
+### Data preparation
+
+| Item | Value |
+|---|---|
+| Source | Copernicus GLO-30 DSM tiles `N09_00_E076_00` and `N10_00_E076_00` (the study area straddles 10° N) |
+| Output | `analysis/kochi_dem.tif`, mosaicked and clipped to the study area + 500 m: 165 × 202 cells of 1″ (≈ 30.5 × 30.7 m), float32, deflate, 0.11 MB (111,375 bytes), EPSG:4326 |
+| Buffered extent | min −11.3 m, mean 7.29 m, max 31.25 m; 2nd–98th percentile 1.0–13.92 m |
+| Inside the study area (22,217 cells) | min −11.3 m, mean 7.42 m, max 31.25 m; **16.15 % of cells below 5 m** |
+| Study-area centroid (10.008° N, 76.302° E) | 9.43 m |
+| Style | `sld/dem_elevation.sld`, a colour ramp built from the real 1.0–13.92 m percentile range |
+
+### GeoServer checks (layer `kochi:dem`, coverage store `kochi_dem`)
+
+| Request | HTTP | Result |
+|---|---|---|
+| WMS 1.1.1 `GetMap` (DEM + study area) | 200 | `image/png`, 134,045 bytes (`analysis/phase4_evidence/dem_wms.png`) |
+| WMS `GetFeatureInfo` at the centroid | 200 | 9.427 m from GeoServer vs 9.43 m from the local file |
+| WCS 2.0.1 `GetCapabilities` | 200 | coverage `kochi__dem` listed (636,635 bytes) |
+| WCS 2.0.1 `DescribeCoverage` | 200 | 3,572 bytes |
+| WCS 2.0.1 `GetCoverage` (`subset=Long(76.292,76.312)&subset=Lat(9.998,10.018)`, GeoTIFF) | 200 | 72 × 72 cells, EPSG:4326, 26,004 bytes; mean 8.07 m (min −1.31, max 21.0) vs **8.07 m** for the same window locally |
+
+![DEM via WMS](analysis/phase4_evidence/dem_wms.png)
+
+**Interpretation.**
+- **WMS gives a picture, WCS gives the data.** The 134 KB WMS response contains colours chosen by the SLD, not heights. The WCS response is a 26 KB GeoTIFF of real float elevations, and its mean (8.07 m) equals the local file exactly, so WCS delivers the values losslessly for analysis. WMS `GetFeatureInfo` returns one value per click (9.427 m), which suits a pop-up, not analysis.
+- **Kochi is very low-lying.** The study-area mean is 7.42 m, and one cell in six lies below 5 m, which is relevant to the waterlogging that affects walking routes in the monsoon.
+- **The negative minimum (−11.3 m) is not a real depression.** GLO-30 is a radar *surface* model referenced to the EGM2008 geoid, and its values over water bodies and in steep built-up edges are known to be noisy.
+- **Surface, not ground.** Being a DSM, GLO-30 measures roofs and tree canopies in built-up and wooded areas, not the ground, so it overstates ground level there. For flood or slope analysis a bare-earth DTM would be needed.
+
+---
+
+## Q9 — Map client and data delivery methods
+
+### Q9a — MapLibre client architecture, payload sizes and runtime performance (measured)
 
 The frontend (`client/index.html`, `client/app.js`) is implemented in **MapLibre GL JS v4.7.1** over a containerized multi-service stack (`FastAPI`, `PostGIS/pgRouting`, `GeoServer 2.28.3`, `pg_tileserv`, and `pg_featureserv`):
 
@@ -328,3 +436,122 @@ The frontend (`client/index.html`, `client/app.js`) is implemented in **MapLibre
 * **Architectural trade-offs observed:**
   * **Vector tiles (`pg_tileserv` `.pbf`) vs. WMS PNG (`GeoServer`):** At zoom `14`, a single `building_walk_time` `.pbf` tile (`22.61 KB`) carries full attribute metadata (`walk_min`, `dist_m`, `band`, `name`) for instant WebGL hover/click popups without extra `GetFeatureInfo` roundtrips, whereas WMS `GetMap` (`37.98 KB` per `256x256` tile) offloads complex polygon dissolves (`service_areas`) to the server.
   * **Static/precomputed layers vs. live `pgRouting`:** Precomputed PostGIS views/tables served via `pg_tileserv` and `pg_featureserv` respond in `21–98 ms`, whereas live network traversal (`pgr_drivingDistance` + spatial aggregation in `/api/isochrone`) takes `~1.39 s` in PostGIS and `~4.76 s` end-to-end, justifying precomputation for city-wide layers and on-demand execution only for user-clicked origins.
+
+### Q9b — Buildings delivered three ways (DevTools, Network tab, cache disabled)
+
+The client's **Buildings delivery (Q9)** selector switches the same 5,321 buildings between (a) GeoServer WMS PNG tiles of `kochi:building_access`, (b) one WFS 2.0 `GetFeature` returning all buildings as GeoJSON, and (c) `pg_tileserv` vector tiles from `public.building_walk_time`. The **Q9 delivery benchmark** panel jumps to zoom 12, 14 or 16 and reloads the layer with a cache-buster. It counts requests and times the load until that source has finished loading. Sizes for cross-origin services (GeoServer `:8088`, pg_tileserv `:7800`) must be read in DevTools.
+
+| Method | Zoom 12 (Requests / KB / ms) | Zoom 14 (Requests / KB / ms) | Zoom 16 (Requests / KB / ms) |
+|---|---|---|---|
+| (a) Tiled WMS PNG | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
+| (b) Single WFS GeoJSON | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
+| (c) MVT from pg_tileserv | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
+
+**What breaks first as the area grows.**
+- **(b) Single WFS GeoJSON.** Its payload grows linearly with the number of features and attributes and does not depend on zoom: the browser downloads, parses and keeps every building even when it shows only a few streets. For a whole city (hundreds of thousands of buildings) a single response becomes tens to hundreds of megabytes. Parsing it blocks the main thread, memory use climbs, and the server must serialise everything per request. Paging (`count`/`startIndex`) or a `BBOX` filter only postpones the problem.
+- **(a) Tiled WMS.** Cost is bounded by the screen, not the data: a view always needs about the same number of 256 px tiles, so area growth does not break it. The costs are server-side rendering for every tile and style change (or a tile cache), no client-side styling, and no feature attributes without extra `GetFeatureInfo` round trips. MapLibre requests raster tiles at 256 px, so a view needs about four times as many WMS tiles as 512 px vector tiles.
+- **(c) MVT.** Also bounded by the screen, but each tile carries generalised geometry *and* attributes. That means instant restyling (the scenario selector) and click pop-ups without extra requests. Tiles can be generated on the fly from PostGIS or pre-packed into PMTiles (Q12).
+
+**Comparison with Nearby-Services.** The earlier Leaflet app answered each query with one JSON response from FastAPI and drew every result as a marker. That is pattern (b): fine for a few dozen nearby points, but it would degrade first if asked to show every building in a city. This project keeps that pattern only for small, query-shaped answers (`/api/nearest`, isochrones, 93 facilities) and delivers dense layers as tiles.
+
+---
+
+## Q10 — Multi-stage Docker build and image optimisation
+
+`api/Dockerfile` has two stages from the same `python:3.12-slim` base:
+
+| Stage | Contents | Shipped? |
+|---|---|---|
+| `builder` | `build-essential` (gcc, headers) + `pip wheel` of every requirement into `/wheels` | No |
+| `runtime` | Base image + wheels installed offline (`--no-index`), mounted from the builder with `RUN --mount=type=bind,from=builder` so they never become an image layer; app code and client copied with `--chown`; runs as UID 10001 (non-root); `HEALTHCHECK` on `/api/health` | Yes (`kochi-healthcare-api:latest`) |
+
+Layer order puts `requirements.txt` before the code, so a code edit reuses the cached dependency layers. `.dockerignore` keeps `analysis/`, `docs/`, `k8s/`, data files and `.env` out of the build context.
+
+| Measurement | Result |
+|---|---|
+| `docker images` — `kochi-healthcare-api:builder` size | [PASTE REAL OUTPUT HERE] |
+| `docker images` — `kochi-healthcare-api:latest` (runtime) size | [PASTE REAL OUTPUT HERE] |
+| `docker images` — `python:3.12-slim` base size (reference) | [PASTE REAL OUTPUT HERE] |
+| Size saved by shipping the runtime stage (builder − runtime) | [PASTE REAL OUTPUT HERE] |
+| `docker history kochi-healthcare-api:latest` — largest layers | [PASTE REAL OUTPUT HERE] |
+| `docker run --rm --entrypoint id kochi-healthcare-api:latest` | [PASTE REAL OUTPUT HERE] |
+| Rebuild time after editing only `api/app/main.py` (cache reuse) | [PASTE REAL OUTPUT HERE] |
+
+**Interpretation.** The builder carries compilers, headers and pip caches that are only needed to *produce* wheels. The runtime image contains only the interpreter, the installed packages and the app, which means a smaller download, a faster `kind load` and a smaller attack surface, with no compiler to exploit. Running as a non-root UID means a compromised process cannot modify the image's system files.
+
+---
+
+## Q11 — Local Kubernetes (kind): deployment, self-healing and persistence
+
+Cluster `kochi-webgis` (`k8s/kind-config.yaml`), namespace `kochi-webgis`. NodePorts are mapped to host ports `18080` (API + client), `17800` (pg_tileserv) and `19000` (pg_featureserv). GeoServer stays in Docker Compose.
+
+| Object | File | Role |
+|---|---|---|
+| `Namespace kochi-webgis` | `00-namespace.yaml` | Isolates the project |
+| `Secret db-credentials` | `10-secret-example.yaml` | DB name, user and password, injected as env vars (`DATABASE_URL` built with `$(VAR)` substitution) |
+| `StatefulSet postgis` + headless `Service postgis` | `20-postgis-statefulset.yaml` | Stable pod `postgis-0`, `volumeClaimTemplates` → PVC `data-postgis-0` (5 Gi, `ReadWriteOnce`); readiness and liveness via `pg_isready` |
+| `Deployment api` (2 replicas) + `Service api` (NodePort 30080) | `30-app-deployments.yaml` | Stateless FastAPI; readiness `/api/config`, liveness TCP; non-root |
+| `Deployment pg-tileserv` + `Service` (NodePort 30780) | `30-app-deployments.yaml` | Vector tiles |
+| `Deployment pg-featureserv` + `Service` (NodePort 30900) | `30-app-deployments.yaml` | OGC API – Features |
+
+### Deployment
+
+| Check | Result |
+|---|---|
+| `kubectl get nodes` | [PASTE REAL OUTPUT HERE] |
+| `kubectl get pods,svc,pvc -n kochi-webgis` | [PASTE REAL OUTPUT HERE] |
+| Data restored into `postgis-0` (row counts: facility_access_4326 / building_access_4326 / walk_edges_32643) | [PASTE REAL OUTPUT HERE] |
+| `curl.exe http://localhost:18080/api/health` | [PASTE REAL OUTPUT HERE] |
+| `curl.exe http://localhost:17800/index.json` (layer count) | [PASTE REAL OUTPUT HERE] |
+
+### Self-healing tests
+
+| Test | Before | After | Time to Ready |
+|---|---|---|---|
+| `kubectl delete pod <one api pod>` | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
+| `kubectl delete pod postgis-0` | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
+| Marker row in `k8s_persistence_test` after `postgis-0` was recreated | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | — |
+| PVC `data-postgis-0` (same volume name before and after) | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | — |
+
+[PASTE SCREENSHOT HERE: http://localhost:18080 served from the kind cluster]
+
+**Interpretation.**
+- **Deployments heal stateless pods.** A Deployment's ReplicaSet controller keeps the declared number of pods. Delete one and a new pod with a new random name is created at once, while the Service keeps routing to the surviving replica, so the API stays reachable.
+- **StatefulSets keep identity and data.** A StatefulSet recreates the pod with the **same name** (`postgis-0`) and re-attaches the **same PersistentVolumeClaim**. The database files live on the volume, not in the container's writable layer, so the marker row and all tables survive the restart.
+- **Readiness probes gate traffic.** They keep the API pods out of the Service until PostGIS answers, so clients never hit a half-started pod.
+
+---
+
+## Q12 — Serverless delivery: PMTiles on GitHub Pages
+
+`pmtiles/export_pmtiles.py` reads PostGIS (`127.0.0.1:15432`, user `postgres`, database `kochi_health`). For every tile z10–z16 over the study area + ~2 km, PostGIS builds one multi-layer vector tile with `ST_AsMVTGeom`/`ST_AsMVT`. The tiles are gzip-compressed and written with the `pmtiles` Python writer into **`docs/tiles/kochi.pmtiles`**, without needing tippecanoe on Windows. Layers: `study_area`, `service_areas`, `hospital_gaps`, `h3_res8`, `h3_res9`, `buildings` (with `all_dist_m`, `hospital_dist_m`, `clinical_dist_m`) and `facilities`. `docs/tiles/kochi_static.json` carries the extent and the Phase 2 coverage table.
+
+The same `client/` code runs in both places. When `/api/config` cannot be reached (as on GitHub Pages), `app.js` switches to static mode, registers the `pmtiles://` protocol and reads tiles with HTTP Range requests. Walking times are recomputed in the browser from the stored distances, so the facility-set and speed selectors still work. `.github/workflows/deploy-pmtiles.yml` validates the archive, assembles `_site/` with `pmtiles/build_site.py` and deploys it to GitHub Pages.
+
+| Check | Result |
+|---|---|
+| `export_pmtiles.py` — archive size, tiles written, zoom range | [PASTE REAL OUTPUT HERE] |
+| Layers in the archive (verification line) | [PASTE REAL OUTPUT HERE] |
+| Local test (`pmtiles/serve_static.py`, http://localhost:8090): mode badge shows STATIC, buildings and facilities render | [PASTE REAL OUTPUT HERE] |
+| DevTools: requests to `kochi.pmtiles` return **206 Partial Content** with `Content-Range` | [PASTE REAL OUTPUT HERE] |
+| GitHub Actions run (workflow "Deploy PMTiles static client to GitHub Pages") | [PASTE REAL OUTPUT HERE] |
+| GitHub Pages URL | [PASTE REAL OUTPUT HERE] |
+
+[PASTE SCREENSHOT HERE: GitHub Pages site in STATIC · PMTiles mode]
+
+| Capability | Live stack (Compose / kind) | Static PMTiles (GitHub Pages) |
+|---|---|---|
+| Buildings by walking time, facility set and speed | Yes (pg_tileserv function layer) | Yes (recomputed from stored distances) |
+| Facilities, service areas, gaps, H3 grids | Yes | Yes |
+| Network routing, isochrones, geocoding | Yes (pgRouting, Nominatim) | No |
+| WMS/WFS/WCS, DEM | Yes (GeoServer) | No |
+| Servers to run | 5 containers | None (static hosting) |
+| Data freshness | Live | Snapshot at export time |
+
+**Interpretation.**
+- **What PMTiles gives up.** Everything precomputable in this project (Phase 2 accessibility, H3 aggregation, service areas) ships as one static file of a few MB that any static host can serve. What cannot be precomputed (routing from an arbitrary click, geocoding, standards-based OGC queries) still needs the live services.
+- **Why the trade-off fits.** It suits public dissemination: zero running cost, CDN caching and nothing to keep alive. Meanwhile the containerised stack (Q10, Q11) remains the analysis and editing environment.
+
+---
+
+*Study note S1 was corrected in Phase 2: Web Mercator area inflation at Kochi is 3.77 % against the WGS84 ellipsoid, not the 3.1 % that sec²φ alone predicts.*

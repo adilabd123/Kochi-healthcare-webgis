@@ -1,0 +1,204 @@
+{
+  "generated_at_utc": "2026-11-22T20:07:21+00:00",
+  "pmtiles": "kochi.pmtiles",
+  "pmtiles_bytes": 1807010,
+  "tiles_written": 182,
+  "zoom": [
+    10,
+    16
+  ],
+  "bbox": [
+    76.28366304753602,
+    9.984418452448084,
+    76.32033967058767,
+    10.031580855505691
+  ],
+  "center": {
+    "lat": 10.008000046777987,
+    "lon": 76.30200000652785
+  },
+  "layers": {
+    "study_area": {
+      "features": 1,
+      "minzoom": 10,
+      "maxzoom": 16
+    },
+    "service_areas": {
+      "features": 18,
+      "minzoom": 10,
+      "maxzoom": 16
+    },
+    "hospital_gaps": {
+      "features": 1684,
+      "minzoom": 13,
+      "maxzoom": 16
+    },
+    "h3_res8": {
+      "features": 43,
+      "minzoom": 10,
+      "maxzoom": 16
+    },
+    "h3_res9": {
+      "features": 232,
+      "minzoom": 10,
+      "maxzoom": 16
+    },
+    "buildings": {
+      "features": 5321,
+      "minzoom": 13,
+      "maxzoom": 16
+    },
+    "facilities": {
+      "features": 93,
+      "minzoom": 10,
+      "maxzoom": 16
+    }
+  },
+  "per_zoom": {
+    "10": {
+      "tiles_checked": 2,
+      "tiles_written": 2,
+      "gzip_bytes": 74570
+    },
+    "11": {
+      "tiles_checked": 4,
+      "tiles_written": 2,
+      "gzip_bytes": 84562
+    },
+    "12": {
+      "tiles_checked": 4,
+      "tiles_written": 2,
+      "gzip_bytes": 93402
+    },
+    "13": {
+      "tiles_checked": 9,
+      "tiles_written": 4,
+      "gzip_bytes": 311811
+    },
+    "14": {
+      "tiles_checked": 25,
+      "tiles_written": 12,
+      "gzip_bytes": 344715
+    },
+    "15": {
+      "tiles_checked": 72,
+      "tiles_written": 37,
+      "gzip_bytes": 389688
+    },
+    "16": {
+      "tiles_checked": 255,
+      "tiles_written": 123,
+      "gzip_bytes": 507014
+    }
+  },
+  "coverage": [
+    {
+      "facility_set": "all",
+      "speed_kmh": 4.8,
+      "minutes": 5,
+      "pct_buildings": 44.86
+    },
+    {
+      "facility_set": "all",
+      "speed_kmh": 4.8,
+      "minutes": 10,
+      "pct_buildings": 87.84
+    },
+    {
+      "facility_set": "all",
+      "speed_kmh": 4.8,
+      "minutes": 15,
+      "pct_buildings": 97.31
+    },
+    {
+      "facility_set": "all",
+      "speed_kmh": 3.6,
+      "minutes": 5,
+      "pct_buildings": 29.19
+    },
+    {
+      "facility_set": "all",
+      "speed_kmh": 3.6,
+      "minutes": 10,
+      "pct_buildings": 72.37
+    },
+    {
+      "facility_set": "all",
+      "speed_kmh": 3.6,
+      "minutes": 15,
+      "pct_buildings": 91.99
+    },
+    {
+      "facility_set": "clinical",
+      "speed_kmh": 4.8,
+      "minutes": 5,
+      "pct_buildings": 34.58
+    },
+    {
+      "facility_set": "clinical",
+      "speed_kmh": 4.8,
+      "minutes": 10,
+      "pct_buildings": 82.97
+    },
+    {
+      "facility_set": "clinical",
+      "speed_kmh": 4.8,
+      "minutes": 15,
+      "pct_buildings": 96.47
+    },
+    {
+      "facility_set": "clinical",
+      "speed_kmh": 3.6,
+      "minutes": 5,
+      "pct_buildings": 21.41
+    },
+    {
+      "facility_set": "clinical",
+      "speed_kmh": 3.6,
+      "minutes": 10,
+      "pct_buildings": 63.9
+    },
+    {
+      "facility_set": "clinical",
+      "speed_kmh": 3.6,
+      "minutes": 15,
+      "pct_buildings": 88.87
+    },
+    {
+      "facility_set": "hospital",
+      "speed_kmh": 4.8,
+      "minutes": 5,
+      "pct_buildings": 18.19
+    },
+    {
+      "facility_set": "hospital",
+      "speed_kmh": 4.8,
+      "minutes": 10,
+      "pct_buildings": 59.12
+    },
+    {
+      "facility_set": "hospital",
+      "speed_kmh": 4.8,
+      "minutes": 15,
+      "pct_buildings": 87.16
+    },
+    {
+      "facility_set": "hospital",
+      "speed_kmh": 3.6,
+      "minutes": 5,
+      "pct_buildings": 10.11
+    },
+    {
+      "facility_set": "hospital",
+      "speed_kmh": 3.6,
+      "minutes": 10,
+      "pct_buildings": 38.47
+    },
+    {
+      "facility_set": "hospital",
+      "speed_kmh": 3.6,
+      "minutes": 15,
+      "pct_buildings": 68.33
+    }
+  ]
+}

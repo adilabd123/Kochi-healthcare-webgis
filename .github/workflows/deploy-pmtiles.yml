@@ -1,11 +1,26 @@
-﻿name: Deploy PMTiles Static Client to GitHub Pages
+﻿# Q12 - Deploy the static PMTiles client to GitHub Pages
+#
+# The PMTiles archive is generated locally from PostGIS
+# (python pmtiles/export_pmtiles.py) and committed under docs/tiles/,
+# because GitHub's runners cannot reach the database on your PC.
+# This workflow only assembles and publishes the static site:
+#   client/index.html, app.js, style.css  +  docs/tiles/kochi.pmtiles (+ kochi_static.json)
+# On GitHub Pages there is no /api/config, so client/app.js switches itself to
+# static PMTiles mode.
+#
+# One-time setup: GitHub repo -> Settings -> Pages -> Source: "GitHub Actions".
+
+name: Deploy PMTiles static client to GitHub Pages
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - "docs/**"
+      - "client/index.html"
+      - "client/app.js"
+      - "client/style.css"
+      - "docs/tiles/**"
       - "pmtiles/**"
       - ".github/workflows/deploy-pmtiles.yml"
 
@@ -15,24 +30,64 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Pages
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pmtiles reader
+        run: python -m pip install "pmtiles>=3.4,<4"
+
+      - name: Validate the PMTiles archive
+        run: |
+          python - <<'EOF'
+          import json, sys
+          from pathlib import Path
+          from pmtiles.reader import MmapSource, Reader
+          p = Path("docs/tiles/kochi.pmtiles")
+          if not p.exists():
+              sys.exit("docs/tiles/kochi.pmtiles is missing - run pmtiles/export_pmtiles.py locally and commit it")
+          with p.open("rb") as fh:
+              r = Reader(MmapSource(fh))
+              h, md = r.header(), r.metadata()
+          layers = [v["id"] for v in md.get("vector_layers", [])]
+          print(f"{p}: {p.stat().st_size:,} bytes, zoom {h['min_zoom']}-{h['max_zoom']}, "
+                f"{h['addressed_tiles_count']} tiles, layers {layers}")
+          need = {"buildings", "facilities", "service_areas", "study_area"}
+          if not need.issubset(layers):
+              sys.exit(f"missing layers: {sorted(need - set(layers))}")
+          meta = json.loads(Path("docs/tiles/kochi_static.json").read_text(encoding="utf-8"))
+          print("static config generated", meta["generated_at_utc"], "coverage rows", len(meta["coverage"]))
+          EOF
+
+      - name: Assemble site
+        run: python pmtiles/build_site.py --out _site
+
+      - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Upload artifact
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "docs"
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

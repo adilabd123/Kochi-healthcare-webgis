@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-11-21T19:18:23+00:00",
+  "generated_at_utc": "2026-11-22T19:39:59+00:00",
   "origin": {
     "lat": 10.008,
     "lon": 76.302
@@ -10,14 +10,14 @@
     {
       "check": "postgis: views, function, indexes",
       "ok": true,
-      "ms": 58.8,
+      "ms": 796.9,
       "detail": {
         "postgis": "3.5.2",
         "pgrouting": "3.8.0",
         "gap_view": true,
         "coverage_view": true,
         "tile_function": true,
-        "gist_indexes": 18,
+        "gist_indexes": 22,
         "elderly_gap_buildings": 1684,
         "coverage_rows": 18
       }
@@ -25,16 +25,16 @@
     {
       "check": "pg_tileserv: index lists function layer",
       "ok": true,
-      "ms": 38.2,
+      "ms": 657.9,
       "detail": {
-        "layers": 20,
+        "layers": 22,
         "function_layer": "public.building_walk_time"
       }
     },
     {
       "check": "pg_tileserv: tile all @4.8",
       "ok": true,
-      "ms": 19.0,
+      "ms": 396.7,
       "detail": {
         "z/x/y": "15/23329/15468",
         "bytes": 25774,
@@ -44,7 +44,7 @@
     {
       "check": "pg_tileserv: tile hospital @3.6",
       "ok": true,
-      "ms": 14.7,
+      "ms": 30.1,
       "detail": {
         "z/x/y": "15/23329/15468",
         "bytes": 26171,
@@ -54,15 +54,15 @@
     {
       "check": "pg_featureserv: collections",
       "ok": true,
-      "ms": 45.1,
+      "ms": 477.7,
       "detail": {
-        "collections": 19
+        "collections": 21
       }
     },
     {
       "check": "pg_featureserv: facility items",
       "ok": true,
-      "ms": 13.3,
+      "ms": 96.3,
       "detail": {
         "features": 93,
         "hospital": 32
@@ -71,7 +71,7 @@
     {
       "check": "geoserver: WMS 1.3.0 capabilities",
       "ok": true,
-      "ms": 292.2,
+      "ms": 2379.6,
       "detail": {
         "layers": [
           "study_area",
@@ -86,7 +86,7 @@
     {
       "check": "geoserver: WMS GetMap service_areas + CQL",
       "ok": true,
-      "ms": 100.8,
+      "ms": 5524.8,
       "detail": {
         "bytes": 38133
       }
@@ -94,7 +94,7 @@
     {
       "check": "geoserver: WFS 2.0 hospitals (CQL)",
       "ok": true,
-      "ms": 62.9,
+      "ms": 577.3,
       "detail": {
         "hospital_features": 32
       }
@@ -102,7 +102,7 @@
     {
       "check": "api: health",
       "ok": true,
-      "ms": 107.6,
+      "ms": 421.1,
       "detail": {
         "status": "ok",
         "database": {
@@ -117,7 +117,7 @@
     {
       "check": "api: config",
       "ok": true,
-      "ms": 3.9,
+      "ms": 57.8,
       "detail": {
         "geoserver_wms_url": "http://localhost:8088/geoserver/kochi/wms",
         "tileserv_url": "http://localhost:7800",
@@ -127,7 +127,7 @@
     {
       "check": "api: coverage table",
       "ok": true,
-      "ms": 4.3,
+      "ms": 17.7,
       "detail": {
         "rows": 18,
         "hospital_3.6_15min_pct_buildings": 68.33
@@ -136,10 +136,10 @@
     {
       "check": "api: nearest all (pgRouting)",
       "ok": true,
-      "ms": 55.4,
+      "ms": 1049.5,
       "detail": {
         "snap_m": 18.6,
-        "elapsed_ms": 52.3,
+        "elapsed_ms": 1040.5,
         "top3": [
           {
             "name": "Arc Fertility Hospitals",
@@ -169,10 +169,10 @@
     {
       "check": "api: nearest hospital (pgRouting)",
       "ok": true,
-      "ms": 65.0,
+      "ms": 76.6,
       "detail": {
         "snap_m": 18.6,
-        "elapsed_ms": 61.7,
+        "elapsed_ms": 73.0,
         "top3": [
           {
             "name": "Arc Fertility Hospitals",
@@ -202,33 +202,33 @@
     {
       "check": "api: isochrone 15 min @4.8",
       "ok": true,
-      "ms": 865.6,
+      "ms": 3720.3,
       "detail": {
         "distance_budget_m": 1181.4,
         "area_km2": 1.605,
         "buildings": 345,
         "facilities": 8,
         "hospitals": 3,
-        "elapsed_ms": 860.6
+        "elapsed_ms": 3714.3
       }
     },
     {
       "check": "api: isochrone 15 min @3.6",
       "ok": true,
-      "ms": 239.4,
+      "ms": 268.5,
       "detail": {
         "distance_budget_m": 881.4,
         "area_km2": 0.7616,
         "buildings": 118,
         "facilities": 4,
         "hospitals": 3,
-        "elapsed_ms": 235.6
+        "elapsed_ms": 263.6
       }
     },
     {
       "check": "api: GeoServer WFS proxy",
       "ok": true,
-      "ms": 56.4,
+      "ms": 283.3,
       "detail": {
         "features": 5
       }
@@ -236,9 +236,9 @@
     {
       "check": "api: client page",
       "ok": true,
-      "ms": 15.8,
+      "ms": 30.7,
       "detail": {
-        "bytes": 4386
+        "bytes": 7452
       }
     }
   ]

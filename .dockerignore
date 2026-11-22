@@ -1,17 +1,29 @@
-# Keep the API build context small: only api/ and client/ are copied.
+# Build context for api/Dockerfile: only api/ and client/ are copied into the image.
 .git
 .github
+.gitignore
 .venv
 venv
+.env
 **/__pycache__
 **/*.pyc
-.env
 analysis
-study
-sql
-sld
+assets
+docs
 k8s
+pmtiles
+sld
+sql
+study
+_site
+client/leaflet_bak
+client/tiles
+README.md
+ANSWERS.md
+docker-compose.yml
 *.gpkg
 *.graphml
 *.geojson
+*.tif
+*.pmtiles
 *.zip

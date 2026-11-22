@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kochi Healthcare WebGIS — MapLibre GL JS</title>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+        integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,6 +13,7 @@
     <header>
       <h1>Kochi Healthcare WebGIS</h1>
       <p class="sub">Edappally · Palarivattom · Kaloor — MapLibre GL JS</p>
+      <p><span id="modeBadge" class="badge">Detecting services…</span></p>
     </header>
 
     <section>
@@ -29,7 +31,7 @@
           <option value="3.6">3.6 km/h — elderly</option>
         </select>
       </label>
-      <label>Isochrone time
+      <label class="live-only">Isochrone time
         <select id="minutes">
           <option value="5">5 min</option>
           <option value="10">10 min</option>
@@ -41,18 +43,25 @@
     <section>
       <h2>2. Layers</h2>
       <div class="layers">
-        <label><input type="checkbox" id="chkBuildingsMvt" checked> Buildings walk time (pg_tileserv MVT)</label>
-        <label><input type="checkbox" id="chkFacilities" checked> Facilities (pg_featureserv GeoJSON)</label>
-        <label><input type="checkbox" id="chkServiceWms" checked> Service areas 5/10/15 min (WMS CQL)</label>
-        <label><input type="checkbox" id="chkStudyWms" checked> Study area boundary (WMS)</label>
-        <label><input type="checkbox" id="chkGapsWms"> Elderly hospital-access gaps (WMS)</label>
-        <label><input type="checkbox" id="chkEdgesWms"> Walk network edges (WMS)</label>
-        <label><input type="checkbox" id="chkH3Res9"> H3 Res 9 MAUP grid (pg_tileserv)</label>
-        <label><input type="checkbox" id="chkH3Res8"> H3 Res 8 MAUP grid (pg_tileserv)</label>
+        <label><input type="checkbox" id="chkBuildings" checked> Buildings by walking time</label>
+        <fieldset id="bldModes" class="modes">
+          <legend>Buildings delivery (Q9)</legend>
+          <label class="live-only"><input type="radio" name="bldMode" value="wms"> (a) Tiled WMS PNG — GeoServer</label>
+          <label class="live-only"><input type="radio" name="bldMode" value="wfs"> (b) Single WFS 2.0 GeoJSON — GeoServer</label>
+          <label><input type="radio" name="bldMode" value="mvt" checked> (c) Vector tiles — <span id="mvtSourceLabel">pg_tileserv MVT</span></label>
+        </fieldset>
+        <label><input type="checkbox" id="chkFacilities" checked> Facilities (<span id="facSourceLabel">pg_featureserv GeoJSON</span>)</label>
+        <label><input type="checkbox" id="chkServiceWms" checked> Service areas 5/10/15 min</label>
+        <label><input type="checkbox" id="chkStudyWms" checked> Study area boundary</label>
+        <label><input type="checkbox" id="chkGapsWms"> Elderly hospital-access gaps</label>
+        <label class="live-only"><input type="checkbox" id="chkEdgesWms"> Walk network edges (WMS)</label>
+        <label class="live-only"><input type="checkbox" id="chkDem"> DEM elevation (GeoServer WMS)</label>
+        <label><input type="checkbox" id="chkH3Res9"> H3 Res 9 MAUP grid</label>
+        <label><input type="checkbox" id="chkH3Res8"> H3 Res 8 MAUP grid</label>
       </div>
     </section>
 
-    <section>
+    <section class="live-only">
       <h2>3. Origin &amp; Routing</h2>
       <form id="searchForm" autocomplete="off">
         <input id="searchInput" type="search" placeholder="Search address (Nominatim)…" minlength="3" required>
@@ -70,7 +79,7 @@
       <p id="isoInfo" class="info"></p>
     </section>
 
-    <section>
+    <section class="live-only">
       <h2>4. OGC WFS 2.0</h2>
       <div class="buttons">
         <button id="btnWfsHospitals" class="secondary">WFS 2.0: hospitals</button>
@@ -87,14 +96,61 @@
       <p class="hint">Share of the 5,321 buildings within each walking time of the selected facility set.</p>
     </section>
 
+    <section class="live-only">
+      <h2>6. Q9 delivery benchmark</h2>
+      <p class="hint">Pick a delivery method above, set the zoom, then Measure. Each run reloads the
+        buildings layer with a cache-buster and times it until that layer has finished loading.</p>
+      <div class="buttons">
+        <button class="secondary zoomBtn" data-zoom="12">Zoom 12</button>
+        <button class="secondary zoomBtn" data-zoom="14">Zoom 14</button>
+        <button class="secondary zoomBtn" data-zoom="16">Zoom 16</button>
+        <button id="btnMeasure">Measure</button>
+      </div>
+      <table id="q9Table">
+        <thead><tr><th>Method</th><th>Zoom</th><th>Req</th><th>KB</th><th>ms</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="buttons">
+        <button id="btnQ9Copy" class="secondary">Copy as Markdown</button>
+        <button id="btnQ9Reset" class="secondary">Reset</button>
+      </div>
+      <p class="hint">KB shows "DevTools" when the browser hides cross-origin sizes
+        (GeoServer :8088, pg_tileserv :7800); read them in DevTools → Network.</p>
+    </section>
+
+    <section id="legend">
+      <h2>Legend</h2>
+      <div class="legend-title">Buildings — walking time</div>
+      <div><i style="background:#15803d"></i>0–5 min</div>
+      <div><i style="background:#84cc16"></i>5–10 min</div>
+      <div><i style="background:#facc15"></i>10–15 min</div>
+      <div><i style="background:#dc2626"></i>&gt; 15 min</div>
+      <div><i style="background:#6b7280"></i>unreachable / no data</div>
+      <div class="legend-title">Facilities</div>
+      <div><i class="dot" style="background:#dc2626"></i>Hospital</div>
+      <div><i class="dot" style="background:#2563eb"></i>Clinic / doctors / dentist / centre</div>
+      <div><i class="dot" style="background:#16a34a"></i>Pharmacy</div>
+      <div><i class="dot" style="background:#9333ea"></i>Laboratory</div>
+      <div><i class="dot" style="background:#6b7280"></i>Other</div>
+      <div class="legend-title">Service areas</div>
+      <div><i style="background:#f87171"></i>5 min</div>
+      <div><i style="background:#fdba74"></i>10 min</div>
+      <div><i style="background:#fde68a"></i>15 min</div>
+      <div class="legend-title live-only">DEM (Copernicus GLO-30, m)</div>
+      <div class="live-only"><i class="ramp"></i>low → high (p2–p98 ramp)</div>
+    </section>
+
     <footer>
       <span id="status">Loading…</span><br>
-      Data © OpenStreetMap contributors (ODbL).
+      Data © OpenStreetMap contributors (ODbL). DEM: Copernicus GLO-30 © DLR / Airbus, ESA.
     </footer>
   </aside>
   <main id="map"></main>
 
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
+          integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"
+          integrity="sha384-QfbOCebHNw8pQiPAOd2IFee2v2A5VYZxBk0+JGZ5H+3mfzVIp6zsQNkTsfGJot93" crossorigin="anonymous"></script>
   <script src="app.js"></script>
 </body>
 </html>

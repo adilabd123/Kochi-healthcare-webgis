@@ -1,0 +1,74 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261123010523
+Username: DESKTOP-GVQ7EAO\MASTER
+RunAs User: DESKTOP-GVQ7EAO\MASTER
+Configuration Name: 
+Machine: DESKTOP-GVQ7EAO (Microsoft Windows NT 10.0.22631.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe
+Process ID: 15688
+PSVersion: 5.1.22621.6133
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.22621.6133
+BuildVersion: 10.0.22621.6133
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is .\analysis\phase5_q10_output.txt
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker build -f api/Dockerfile --target builder -t kochi-healthcare-api:builder .
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker build -f api/Dockerfile --target runtime -t kochi-healthcare-api:latest .
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker pull python:3.12-slim
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker images --format "table {{.Repository}}:{{.Tag}}`t{{.Size}}" | Select-String "kochi-healthcare-api|python"
+
+kochi-healthcare-api:latest      256MB
+kochi-healthcare-api:builder     672MB
+python:3.12-slim                 180MB
+
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker history kochi-healthcare-api:latest --format "table {{.Size}}`t{{.CreatedBy}}"
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker run --rm --entrypoint id kochi-healthcare-api:latest
+
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) Add-Content api\app\main.py "`n# cache test"
+PS F:\Kochi-healthcare-webgis>
+(.venv) Measure-Command { docker build -f api/Dockerfile -t kochi-healthcare-api:latest . } | Select-Object TotalSeconds
+
+TotalSeconds
+------------
+   8.0068669
+
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) git checkout -- api/app/main.py
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker build -f api/Dockerfile -t kochi-healthcare-api:latest .
+
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) docker compose up -d --build api
+
+PS F:\Kochi-healthcare-webgis>
+(.venv) python analysis\phase3_verify_stack.py
+
+PS F:\Kochi-healthcare-webgis>
+PS F:\Kochi-healthcare-webgis>
+(.venv) Stop-Transcript
+**********************
+Windows PowerShell transcript end
+End time: 20261123010959
+**********************
