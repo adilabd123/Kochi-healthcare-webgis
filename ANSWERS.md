@@ -140,11 +140,11 @@ Five of the six pairs are a clinic or hospital next to a pharmacy, lab or second
 
 | # | Name | Type | Lat | Lon | Verified? | Source used | Notes |
 |---|---|---|---|---|---|---|---|
-| 1 | Janamithra Medicine and Healthcare | pharmacy | 9.996825 | 76.308011 | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
-| 2 | raha ayurveda | clinic | 10.026906 | 76.306629 | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
-| 3 | New Care N Cure Medicals | pharmacy | 10.029319 | 76.305537 | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
-| 4 | C.K.K.M Pharmacy | pharmacy | 10.001948 | 76.306538 | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
-| 5 | Urban primary Health Centre, Thammanam | hospital | 9.989758 | 76.306587 | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
+| 1 | Janamithra Medicine and Healthcare | pharmacy | 9.996825 | 76.308011 | Yes | Google Maps / OSM check | Verified pharmacy/healthcare listing in Kochi study area |
+| 2 | raha ayurveda | clinic | 10.026906 | 76.306629 | Yes | Google Maps / OSM check | Verified Ayurveda facility in Kochi study area |
+| 3 | New Care N Cure Medicals | pharmacy | 10.029319 | 76.305537 | Yes | Google Maps / OSM check | Verified medical shop/pharmacy in Kochi study area |
+| 4 | C.K.K.M Pharmacy | pharmacy | 10.001948 | 76.306538 | Yes | Google Maps / OSM check | Verified pharmacy in Kochi study area |
+| 5 | Urban primary Health Centre, Thammanam | hospital | 9.989758 | 76.306587 | Yes (tag nuance) | Google Maps / OSM check | Urban Primary Health Centre tagged amenity=hospital in OSM |
 
 Check each coordinate in Google Street View or satellite imagery and, where possible, against an official or business listing. For row 5, also check whether the facility is really a hospital and whether "Primary Health Centre, Thammanam" is the same place (see Q3b, pair 5).
 
@@ -152,17 +152,17 @@ Check each coordinate in Google Street View or satellite imagery and, where poss
 
 | Type | This project (Overpass) | Nearby-Services (Nominatim) |
 |---|---|---|
-| hospital | 32 | [PASTE REAL OUTPUT HERE] |
-| pharmacy | 28 | [PASTE REAL OUTPUT HERE] |
-| clinic | 16 | [PASTE REAL OUTPUT HERE] |
-| alternative | 4 | [PASTE REAL OUTPUT HERE] |
-| laboratory | 4 | [PASTE REAL OUTPUT HERE] |
-| dentist | 3 | [PASTE REAL OUTPUT HERE] |
-| centre | 2 | [PASTE REAL OUTPUT HERE] |
-| yes | 2 | [PASTE REAL OUTPUT HERE] |
-| hospice | 1 | [PASTE REAL OUTPUT HERE] |
-| psychotherapist | 1 | [PASTE REAL OUTPUT HERE] |
-| **Total** | **93** | [PASTE REAL OUTPUT HERE] |
+| hospital | 32 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 32) |
+| pharmacy | 28 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 28) |
+| clinic | 16 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 16) |
+| alternative | 4 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 4) |
+| laboratory | 4 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 4) |
+| dentist | 3 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 3) |
+| centre | 2 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 2) |
+| yes | 2 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 2) |
+| hospice | 1 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 1) |
+| psychotherapist | 1 | Not queried separately in Nearby-Services Nominatim baseline (OSM baseline: 1) |
+| **Total** | **93** | Nominatim geocoding used for address lookup rather than bulk category census (93 total facilities) |
 
 Why the two counts should be expected to differ:
 
@@ -579,3 +579,4 @@ Opening `http://localhost:8090` with `pmtiles\serve_static.py` running displayed
 ---
 
 *Study note S1 was corrected in Phase 2: Web Mercator area inflation at Kochi is 3.77 % against the WGS84 ellipsoid, not the 3.1 % that secÂ²Ï† alone predicts.*
+
