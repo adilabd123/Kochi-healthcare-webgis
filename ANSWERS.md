@@ -580,3 +580,4 @@ Opening `http://localhost:8090` with `pmtiles\serve_static.py` running displayed
 
 *Study note S1 was corrected in Phase 2: Web Mercator area inflation at Kochi is 3.77 % against the WGS84 ellipsoid, not the 3.1 % that secÂ²Ï† alone predicts.*
 
+
