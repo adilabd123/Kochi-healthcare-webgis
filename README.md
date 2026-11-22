@@ -16,6 +16,8 @@ It upgrades the earlier `nearby-services` project (FastAPI + PostGIS `geography`
 | CRS | Storage and web: `EPSG:4326`; measurement: UTM 43N `EPSG:32643`; tiles: `EPSG:3857` |
 | Data | 5,321 building footprints; walk network of 11,665 nodes and 27,936 edges (study area + 2 km); Copernicus GLO-30 DEM |
 
+**Live static demo (GitHub Pages, PMTiles):** https://adilabd123.github.io/Kochi-healthcare-webgis/
+
 Results and discussion (Q1–Q12): **[ANSWERS.md](ANSWERS.md)**. Study notes: [`study/S1.md`](study/S1.md)–[`study/S4.md`](study/S4.md).
 
 ---
@@ -113,9 +115,13 @@ start http://localhost:8000
 
 ```powershell
 cd F:\Kochi-healthcare-webgis
-docker build -f api/Dockerfile --target runtime -t kochi-healthcare-api:latest .
+docker build -f api/Dockerfile --target runtime --provenance=false -t kochi-healthcare-api:latest .
 kind create cluster --config k8s/kind-config.yaml          # cluster "kochi-webgis"
-kind load docker-image kochi-healthcare-api:latest pgrouting/pgrouting:16-3.5-3.8 pramsey/pg_tileserv:latest pramsey/pg_featureserv:latest --name kochi-webgis
+docker save kochi-healthcare-api:latest -o kochi-api.tar
+kind load image-archive kochi-api.tar --name kochi-webgis   # more reliable than "kind load docker-image" on Docker Desktop
+Remove-Item kochi-api.tar
+docker exec kochi-webgis-control-plane crictl images | Select-String kochi-healthcare-api   # must list the image
+kind load docker-image pgrouting/pgrouting:16-3.5-3.8 pramsey/pg_tileserv:latest pramsey/pg_featureserv:latest --name kochi-webgis
 kubectl apply -f k8s/00-namespace.yaml -f k8s/10-secret-example.yaml -f k8s/20-postgis-statefulset.yaml
 kubectl -n kochi-webgis rollout status statefulset/postgis --timeout=300s
 # copy the analysed database from Compose into the cluster (see ANSWERS.md Q11 for the full sequence)
@@ -134,7 +140,7 @@ python pmtiles\build_site.py            # client + tiles -> _site/
 python pmtiles\serve_static.py          # http://localhost:8090 (Range-capable, like GitHub Pages)
 ```
 
-Commit `docs/tiles/` and push to `main`. In the GitHub repository go to **Settings → Pages → Source: GitHub Actions**. The workflow `deploy-pmtiles.yml` validates the archive, assembles `_site/` and deploys it. When `/api/config` is unreachable, the client shows **STATIC · PMTiles** and keeps buildings by walking time (any facility set and speed), facilities, service areas, gap buildings and H3 grids. Routing, geocoding, WMS/WFS and the DEM need the live stack. Force a mode with `?mode=static` or `?mode=live`.
+Commit `docs/tiles/` and push to `main`. The current deployment is live at **https://adilabd123.github.io/Kochi-healthcare-webgis/** (1.81 MB archive, 182 tiles, z10–16). In the GitHub repository go to **Settings → Pages → Source: GitHub Actions**. The workflow `deploy-pmtiles.yml` validates the archive, assembles `_site/` and deploys it. When `/api/config` is unreachable, the client shows **STATIC · PMTiles** and keeps buildings by walking time (any facility set and speed), facilities, service areas, gap buildings and H3 grids. Routing, geocoding, WMS/WFS and the DEM need the live stack. Force a mode with `?mode=static` or `?mode=live`.
 
 ## API
 
@@ -165,7 +171,8 @@ Commit `docs/tiles/` and push to `main`. In the GitHub repository go to **Settin
 | No buildings in live mode | Run `sql/phase3_views.sql`, then `docker compose restart pg_tileserv` |
 | WMS layers or DEM missing | Run `python analysis\phase3_publish_geoserver.py` / `python analysis\phase4_dem_geoserver.py` |
 | kind API pods not Ready | The cluster database is empty: run the restore step in ANSWERS.md Q11, then `kubectl -n kochi-webgis rollout restart deploy` |
-| `ErrImageNeverPull` in kind | `kind load docker-image kochi-healthcare-api:latest --name kochi-webgis` |
+| `ErrImageNeverPull` in kind | The image is not inside the kind node. Rebuild with `--provenance=false`, then `docker save kochi-healthcare-api:latest -o kochi-api.tar` and `kind load image-archive kochi-api.tar --name kochi-webgis`. Check with `docker exec kochi-webgis-control-plane crictl images`, then `kubectl -n kochi-webgis rollout restart deploy/api` |
+| Logs missing native command output | Windows PowerShell 5.1 `Start-Transcript` does not record `docker`/`kubectl`/`curl` output. Pipe each command through `\| Tee-Object -FilePath <log> -Append` instead |
 | Static site shows nothing locally | Serve with `pmtiles\serve_static.py`, not `python -m http.server` (PMTiles needs Range requests) |
 | Port already in use | Change the `*_PORT` values in `.env`, or the `hostPort` values in `k8s/kind-config.yaml` (recreate the cluster) |
 

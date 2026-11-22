@@ -443,12 +443,18 @@ The client's **Buildings delivery (Q9)** selector switches the same 5,321 buildi
 
 | Method | Zoom 12 (Requests / KB / ms) | Zoom 14 (Requests / KB / ms) | Zoom 16 (Requests / KB / ms) |
 |---|---|---|---|
-| (a) Tiled WMS PNG | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
-| (b) Single WFS GeoJSON | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
-| (c) MVT from pg_tileserv | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
+| (a) Tiled WMS PNG | 20 / masked† / 284 | 15 / masked† / 283 | 15 / masked† / 279 |
+| (b) Single WFS GeoJSON | 1 / **4,688.7** / 1,517 | 1 / **4,688.7** / 1,529 | 1 / **4,688.7** / 908 |
+| (c) MVT from pg_tileserv | 9 / masked† / 432 | 6 / masked† / 477 | 6 / masked† / **173** |
+
+† The browser's `PerformanceResourceTiming.transferSize` is 0 for cross-origin responses without a `Timing-Allow-Origin` header (GeoServer `:8088`, pg_tileserv `:7800`), so the in-app meter cannot report KB for (a) and (c). The WFS request goes through the API's same-origin proxy, so its size is measured. Times are from layer reload until that source finished loading.
+
+**What the measurements show.**
+- **(b) ships the whole dataset at every zoom.** The single WFS response is 4,688.7 KB at zoom 12, 14 and 16 alike: all 5,321 buildings with every attribute, about 902 bytes per building. It is also the slowest at zooms 12 and 14 (1.5 s). At zoom 16 it was faster (908 ms) only because the download and parse are the same while less has to be drawn.
+- **(a) and (c) scale with the screen, not the data.** They need 15–20 WMS tiles or 6–9 vector tiles per view, and their load times stay flat (279–284 ms for WMS) or fall as you zoom in (MVT 432 → 173 ms). MVT needs fewer requests than WMS because MapLibre requests vector tiles at 512 px and raster tiles at 256 px. At zoom 16 MVT was the fastest of all three (173 ms), with attributes and client-side styling included.
 
 **What breaks first as the area grows.**
-- **(b) Single WFS GeoJSON.** Its payload grows linearly with the number of features and attributes and does not depend on zoom: the browser downloads, parses and keeps every building even when it shows only a few streets. For a whole city (hundreds of thousands of buildings) a single response becomes tens to hundreds of megabytes. Parsing it blocks the main thread, memory use climbs, and the server must serialise everything per request. Paging (`count`/`startIndex`) or a `BBOX` filter only postpones the problem.
+- **(b) Single WFS GeoJSON.** Its payload grows linearly with the number of features and attributes and does not depend on zoom: the browser downloads, parses and keeps every building even when it shows only a few streets. At the measured ~902 bytes per building, a city with 100 times this study area's 5,321 buildings would need a single response of roughly 458 MB. Parsing it blocks the main thread, memory use climbs, and the server must serialise everything per request. Paging (`count`/`startIndex`) or a `BBOX` filter only postpones the problem.
 - **(a) Tiled WMS.** Cost is bounded by the screen, not the data: a view always needs about the same number of 256 px tiles, so area growth does not break it. The costs are server-side rendering for every tile and style change (or a tile cache), no client-side styling, and no feature attributes without extra `GetFeatureInfo` round trips. MapLibre requests raster tiles at 256 px, so a view needs about four times as many WMS tiles as 512 px vector tiles.
 - **(c) MVT.** Also bounded by the screen, but each tile carries generalised geometry *and* attributes. That means instant restyling (the scenario selector) and click pop-ups without extra requests. Tiles can be generated on the fly from PostGIS or pre-packed into PMTiles (Q12).
 
@@ -469,15 +475,18 @@ Layer order puts `requirements.txt` before the code, so a code edit reuses the c
 
 | Measurement | Result |
 |---|---|
-| `docker images` — `kochi-healthcare-api:builder` size | [PASTE REAL OUTPUT HERE] |
-| `docker images` — `kochi-healthcare-api:latest` (runtime) size | [PASTE REAL OUTPUT HERE] |
-| `docker images` — `python:3.12-slim` base size (reference) | [PASTE REAL OUTPUT HERE] |
-| Size saved by shipping the runtime stage (builder − runtime) | [PASTE REAL OUTPUT HERE] |
-| `docker history kochi-healthcare-api:latest` — largest layers | [PASTE REAL OUTPUT HERE] |
-| `docker run --rm --entrypoint id kochi-healthcare-api:latest` | [PASTE REAL OUTPUT HERE] |
-| Rebuild time after editing only `api/app/main.py` (cache reuse) | [PASTE REAL OUTPUT HERE] |
+| `docker images` — `kochi-healthcare-api:builder` size | **672 MB** |
+| `docker images` — `kochi-healthcare-api:latest` (runtime) size | **256 MB** |
+| `docker images` — `python:3.12-slim` base size (reference) | 180 MB |
+| Size saved by shipping the runtime stage (builder − runtime) | **416 MB (61.9 % smaller)** |
+| Runtime added on top of the base (packages + app + client) | 76 MB |
+| `docker history kochi-healthcare-api:latest` — largest layers | [PASTE REAL OUTPUT HERE — not captured: PowerShell 5.1 transcripts omit native-command output] |
+| `docker run --rm --entrypoint id kochi-healthcare-api:latest` | [PASTE REAL OUTPUT HERE — not captured: PowerShell 5.1 transcripts omit native-command output] |
+| Rebuild time after editing only `api/app/main.py` (cache reuse) | **8.01 s** (`Measure-Command`, `TotalSeconds` 8.0068669) |
 
-**Interpretation.** The builder carries compilers, headers and pip caches that are only needed to *produce* wheels. The runtime image contains only the interpreter, the installed packages and the app, which means a smaller download, a faster `kind load` and a smaller attack surface, with no compiler to exploit. Running as a non-root UID means a compromised process cannot modify the image's system files.
+Source: `analysis/phase5_q10_output.txt`.
+
+**Interpretation.** The builder is 672 MB because it carries compilers, headers and pip caches that are only needed to *produce* wheels. The shipped runtime image is 256 MB, only 76 MB above the bare `python:3.12-slim` base: just the installed packages, the app and the client. That makes it 416 MB (62 %) smaller than the builder, which means a smaller download, a faster `kind load` and a smaller attack surface, with no compiler to exploit. Because `requirements.txt` is copied before the code, a code-only change rebuilt in 8.01 s: every dependency layer came from the cache. Running as a non-root UID means a compromised process cannot modify the image's system files.
 
 ---
 
@@ -498,24 +507,30 @@ Cluster `kochi-webgis` (`k8s/kind-config.yaml`), namespace `kochi-webgis`. NodeP
 
 | Check | Result |
 |---|---|
-| `kubectl get nodes` | [PASTE REAL OUTPUT HERE] |
-| `kubectl get pods,svc,pvc -n kochi-webgis` | [PASTE REAL OUTPUT HERE] |
-| Data restored into `postgis-0` (row counts: facility_access_4326 / building_access_4326 / walk_edges_32643) | [PASTE REAL OUTPUT HERE] |
-| `curl.exe http://localhost:18080/api/health` | [PASTE REAL OUTPUT HERE] |
-| `curl.exe http://localhost:17800/index.json` (layer count) | [PASTE REAL OUTPUT HERE] |
+| `kubectl get nodes` | [PASTE REAL OUTPUT HERE — not captured: PowerShell 5.1 transcripts omit native-command output] |
+| `kubectl get pods,svc,pvc -n kochi-webgis` | [PASTE REAL OUTPUT HERE — not captured: PowerShell 5.1 transcripts omit native-command output] |
+| Data restored into `postgis-0` (row counts: facility_access_4326 / building_access_4326 / walk_edges_32643) | [PASTE REAL OUTPUT HERE — not captured: PowerShell 5.1 transcripts omit native-command output] |
+| `curl.exe http://localhost:18080/api/health` | [PASTE REAL OUTPUT HERE — not captured: PowerShell 5.1 transcripts omit native-command output] |
+| `curl.exe http://localhost:17800/index.json` (layer count) | [PASTE REAL OUTPUT HERE — not captured: PowerShell 5.1 transcripts omit native-command output] |
+| API pods (from `kubectl get events`) | **`ErrImageNeverPull`**: `Container image "kochi-healthcare-api:latest" is not present with pull policy of Never` (pods `api-5648469d4d-f2mf6` and `api-5648469d4d-4x7xm`) |
+
+Source: `analysis/phase5_q11_output.txt`.
 
 ### Self-healing tests
 
 | Test | Before | After | Time to Ready |
 |---|---|---|---|
-| `kubectl delete pod <one api pod>` | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
-| `kubectl delete pod postgis-0` | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] |
-| Marker row in `k8s_persistence_test` after `postgis-0` was recreated | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | — |
-| PVC `data-postgis-0` (same volume name before and after) | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | — |
+| `kubectl delete pod <one api pod>` | API pods not running (`ErrImageNeverPull`) | Replacement pod created and scheduled (`api-5648469d4d-4x7xm`), but it failed with `ErrImageNeverPull` too | **Not reached**: `rollout status` hit its 180 s timeout (`Measure-Command` 181.27 s). Re-run after the image fix |
+| `kubectl delete pod postgis-0` | UID `f02794c9-c333-446e-9d0f-c332558e7bb0` | Same name `postgis-0`, new UID `6c051c91-c011-455d-96a4-b1e24f9a5e8c` | **14.43 s** to Ready |
+| Marker row in `k8s_persistence_test` after `postgis-0` was recreated | [PASTE REAL OUTPUT HERE — not captured: PowerShell 5.1 transcripts omit native-command output] | [PASTE REAL OUTPUT HERE — not captured: PowerShell 5.1 transcripts omit native-command output] | — |
+| PVC `data-postgis-0` (same volume name before and after) | `pvc-afb10586-ff70-4b20-9379-d8308dc72189` | `pvc-afb10586-ff70-4b20-9379-d8308dc72189` (unchanged) | — |
+
+Events recorded during the PostGIS test (`kubectl get events`): `Killing pod/postgis-0` → `SuccessfulCreate statefulset/postgis` → `Scheduled` → `Pulled` (image already present) → `Started`. pg_tileserv and pg_featureserv briefly reported `Readiness probe failed` (HTTP 500 / EOF) while the database was restarting. Their readiness probes took them out of the Services until PostGIS was back, and nothing restarted them.
 
 [PASTE SCREENSHOT HERE: http://localhost:18080 served from the kind cluster]
 
 **Interpretation.**
+- **What the run proved and what it didn't.** The StatefulSet recreated `postgis-0` with the same name in 14.43 s and re-attached the same volume (`pvc-afb10586-…`), as designed. The data check (marker row and building count after the restart) was run but its output was not captured, so it still needs to be recorded. The API Deployment did recreate the deleted pod, which is self-healing at the controller level. But no API pod could start, because the image was not inside the kind node (`ErrImageNeverPull` with `imagePullPolicy: Never`). The API test must be repeated after loading the image correctly (see README troubleshooting).
 - **Deployments heal stateless pods.** A Deployment's ReplicaSet controller keeps the declared number of pods. Delete one and a new pod with a new random name is created at once, while the Service keeps routing to the surviving replica, so the API stays reachable.
 - **StatefulSets keep identity and data.** A StatefulSet recreates the pod with the **same name** (`postgis-0`) and re-attaches the **same PersistentVolumeClaim**. The database files live on the volume, not in the container's writable layer, so the marker row and all tables survive the restart.
 - **Readiness probes gate traffic.** They keep the API pods out of the Service until PostGIS answers, so clients never hit a half-started pod.
@@ -524,18 +539,20 @@ Cluster `kochi-webgis` (`k8s/kind-config.yaml`), namespace `kochi-webgis`. NodeP
 
 ## Q12 — Serverless delivery: PMTiles on GitHub Pages
 
-`pmtiles/export_pmtiles.py` reads PostGIS (`127.0.0.1:15432`, user `postgres`, database `kochi_health`). For every tile z10–z16 over the study area + ~2 km, PostGIS builds one multi-layer vector tile with `ST_AsMVTGeom`/`ST_AsMVT`. The tiles are gzip-compressed and written with the `pmtiles` Python writer into **`docs/tiles/kochi.pmtiles`**, without needing tippecanoe on Windows. Layers: `study_area`, `service_areas`, `hospital_gaps`, `h3_res8`, `h3_res9`, `buildings` (with `all_dist_m`, `hospital_dist_m`, `clinical_dist_m`) and `facilities`. `docs/tiles/kochi_static.json` carries the extent and the Phase 2 coverage table.
+`pmtiles/export_pmtiles.py` reads PostGIS (`127.0.0.1:15432`, user `postgres`, database `kochi_health`). For every tile z10–z16 over the study area + ~2 km, PostGIS builds one multi-layer vector tile with `ST_AsMVTGeom`/`ST_AsMVT`. The tiles are gzip-compressed and written with the `pmtiles` Python writer into **`docs/tiles/kochi.pmtiles`**, without needing tippecanoe on Windows. Layers: `study_area`, `service_areas`, `hospital_gaps`, `h3_res8`, `h3_res9`, `buildings` (with `all_dist_m`, `hospital_dist_m`, `clinical_dist_m`) and `facilities`. `docs/tiles/kochi_static.json` carries the extent and the Phase 2 coverage table (18 rows).
 
 The same `client/` code runs in both places. When `/api/config` cannot be reached (as on GitHub Pages), `app.js` switches to static mode, registers the `pmtiles://` protocol and reads tiles with HTTP Range requests. Walking times are recomputed in the browser from the stored distances, so the facility-set and speed selectors still work. `.github/workflows/deploy-pmtiles.yml` validates the archive, assembles `_site/` with `pmtiles/build_site.py` and deploys it to GitHub Pages.
 
 | Check | Result |
 |---|---|
-| `export_pmtiles.py` — archive size, tiles written, zoom range | [PASTE REAL OUTPUT HERE] |
-| Layers in the archive (verification line) | [PASTE REAL OUTPUT HERE] |
+| `export_pmtiles.py` — archive size, tiles written, zoom range | **1.81 MB** (1,807,010 bytes), **182** non-empty tiles (3.71 MB of raw MVT before gzip), zoom 10–16, built in 9.8 s; generated 2026-11-22T20:07:21Z |
+| Tiles per zoom (non-empty / checked) | z10 2/2 · z11 2/4 · z12 2/4 · z13 4/9 · z14 12/25 · z15 37/72 · z16 123/255 |
+| Layers in the archive (verification line) | `Verified: PMTiles v3, zoom 10-16, 182 tiles, layers ['study_area', 'service_areas', 'hospital_gaps', 'h3_res8', 'h3_res9', 'buildings', 'facilities']; centre tile 14/11664/7734 = 87330 bytes` |
+| Features exported | study_area 1 · service_areas 18 · hospital_gaps 1,684 · h3_res8 43 · h3_res9 232 · buildings 5,321 · facilities 93 |
 | Local test (`pmtiles/serve_static.py`, http://localhost:8090): mode badge shows STATIC, buildings and facilities render | [PASTE REAL OUTPUT HERE] |
-| DevTools: requests to `kochi.pmtiles` return **206 Partial Content** with `Content-Range` | [PASTE REAL OUTPUT HERE] |
+| Range request to the local static server (`curl.exe -H "Range: bytes=0-126"`) | **`HTTP/1.0 206 Partial Content`**, `Content-Range: bytes 0-126/1807010`, `Content-Length: 127`, `Accept-Ranges: bytes` (`analysis/phase5_q12_range_output.txt`) |
 | GitHub Actions run (workflow "Deploy PMTiles static client to GitHub Pages") | [PASTE REAL OUTPUT HERE] |
-| GitHub Pages URL | [PASTE REAL OUTPUT HERE] |
+| GitHub Pages URL | **https://adilabd123.github.io/Kochi-healthcare-webgis/** (live; serves the page titled "Kochi Healthcare WebGIS — MapLibre GL JS") |
 
 [PASTE SCREENSHOT HERE: GitHub Pages site in STATIC · PMTiles mode]
 
@@ -549,7 +566,7 @@ The same `client/` code runs in both places. When `/api/config` cannot be reache
 | Data freshness | Live | Snapshot at export time |
 
 **Interpretation.**
-- **What PMTiles gives up.** Everything precomputable in this project (Phase 2 accessibility, H3 aggregation, service areas) ships as one static file of a few MB that any static host can serve. What cannot be precomputed (routing from an arbitrary click, geocoding, standards-based OGC queries) still needs the live services.
+- **What PMTiles gives up.** Everything precomputable in this project (Phase 2 accessibility, H3 aggregation, service areas) ships as one static file of 1.81 MB that any static host can serve. The browser fetches only the byte ranges it needs: a 127-byte header first, then individual tiles such as the 87 KB centre tile at zoom 14. What cannot be precomputed (routing from an arbitrary click, geocoding, standards-based OGC queries) still needs the live services.
 - **Why the trade-off fits.** It suits public dissemination: zero running cost, CDN caching and nothing to keep alive. Meanwhile the containerised stack (Q10, Q11) remains the analysis and editing environment.
 
 ---
