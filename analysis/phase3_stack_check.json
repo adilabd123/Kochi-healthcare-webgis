@@ -1,0 +1,245 @@
+{
+  "generated_at_utc": "2026-11-21T19:18:23+00:00",
+  "origin": {
+    "lat": 10.008,
+    "lon": 76.302
+  },
+  "passed": 18,
+  "total": 18,
+  "checks": [
+    {
+      "check": "postgis: views, function, indexes",
+      "ok": true,
+      "ms": 58.8,
+      "detail": {
+        "postgis": "3.5.2",
+        "pgrouting": "3.8.0",
+        "gap_view": true,
+        "coverage_view": true,
+        "tile_function": true,
+        "gist_indexes": 18,
+        "elderly_gap_buildings": 1684,
+        "coverage_rows": 18
+      }
+    },
+    {
+      "check": "pg_tileserv: index lists function layer",
+      "ok": true,
+      "ms": 38.2,
+      "detail": {
+        "layers": 20,
+        "function_layer": "public.building_walk_time"
+      }
+    },
+    {
+      "check": "pg_tileserv: tile all @4.8",
+      "ok": true,
+      "ms": 19.0,
+      "detail": {
+        "z/x/y": "15/23329/15468",
+        "bytes": 25774,
+        "content_type": "application/vnd.mapbox-vector-tile"
+      }
+    },
+    {
+      "check": "pg_tileserv: tile hospital @3.6",
+      "ok": true,
+      "ms": 14.7,
+      "detail": {
+        "z/x/y": "15/23329/15468",
+        "bytes": 26171,
+        "content_type": "application/vnd.mapbox-vector-tile"
+      }
+    },
+    {
+      "check": "pg_featureserv: collections",
+      "ok": true,
+      "ms": 45.1,
+      "detail": {
+        "collections": 19
+      }
+    },
+    {
+      "check": "pg_featureserv: facility items",
+      "ok": true,
+      "ms": 13.3,
+      "detail": {
+        "features": 93,
+        "hospital": 32
+      }
+    },
+    {
+      "check": "geoserver: WMS 1.3.0 capabilities",
+      "ok": true,
+      "ms": 292.2,
+      "detail": {
+        "layers": [
+          "study_area",
+          "healthcare",
+          "service_areas",
+          "building_access",
+          "walk_edges",
+          "hospital_access_gaps"
+        ]
+      }
+    },
+    {
+      "check": "geoserver: WMS GetMap service_areas + CQL",
+      "ok": true,
+      "ms": 100.8,
+      "detail": {
+        "bytes": 38133
+      }
+    },
+    {
+      "check": "geoserver: WFS 2.0 hospitals (CQL)",
+      "ok": true,
+      "ms": 62.9,
+      "detail": {
+        "hospital_features": 32
+      }
+    },
+    {
+      "check": "api: health",
+      "ok": true,
+      "ms": 107.6,
+      "detail": {
+        "status": "ok",
+        "database": {
+          "postgis": "3.5.2",
+          "pgrouting": "3.8.0",
+          "facilities": 93,
+          "walk_edges": 27936
+        },
+        "geoserver": "ok"
+      }
+    },
+    {
+      "check": "api: config",
+      "ok": true,
+      "ms": 3.9,
+      "detail": {
+        "geoserver_wms_url": "http://localhost:8088/geoserver/kochi/wms",
+        "tileserv_url": "http://localhost:7800",
+        "featureserv_url": "http://localhost:9000"
+      }
+    },
+    {
+      "check": "api: coverage table",
+      "ok": true,
+      "ms": 4.3,
+      "detail": {
+        "rows": 18,
+        "hospital_3.6_15min_pct_buildings": 68.33
+      }
+    },
+    {
+      "check": "api: nearest all (pgRouting)",
+      "ok": true,
+      "ms": 55.4,
+      "detail": {
+        "snap_m": 18.6,
+        "elapsed_ms": 52.3,
+        "top3": [
+          {
+            "name": "Arc Fertility Hospitals",
+            "type": "hospital",
+            "network_m": 371.2,
+            "walk_min": 4.6,
+            "straight_m": 199.6
+          },
+          {
+            "name": "Ephphatha Softech എഫഥാ സ്പീച്ച് ആന്റ് ഹിയറിങ് സെന്റർ",
+            "type": "hospital",
+            "network_m": 791.4,
+            "walk_min": 9.9,
+            "straight_m": 378.3
+          },
+          {
+            "name": "Akshaya Community Pharmacy And Healthcare",
+            "type": "pharmacy",
+            "network_m": 905.9,
+            "walk_min": 11.3,
+            "straight_m": 483.7
+          }
+        ],
+        "route": true
+      }
+    },
+    {
+      "check": "api: nearest hospital (pgRouting)",
+      "ok": true,
+      "ms": 65.0,
+      "detail": {
+        "snap_m": 18.6,
+        "elapsed_ms": 61.7,
+        "top3": [
+          {
+            "name": "Arc Fertility Hospitals",
+            "type": "hospital",
+            "network_m": 371.2,
+            "walk_min": 4.6,
+            "straight_m": 199.6
+          },
+          {
+            "name": "Ephphatha Softech എഫഥാ സ്പീച്ച് ആന്റ് ഹിയറിങ് സെന്റർ",
+            "type": "hospital",
+            "network_m": 791.4,
+            "walk_min": 9.9,
+            "straight_m": 378.3
+          },
+          {
+            "name": "Renai Medicity",
+            "type": "hospital",
+            "network_m": 1111.1,
+            "walk_min": 13.9,
+            "straight_m": 170.1
+          }
+        ],
+        "route": true
+      }
+    },
+    {
+      "check": "api: isochrone 15 min @4.8",
+      "ok": true,
+      "ms": 865.6,
+      "detail": {
+        "distance_budget_m": 1181.4,
+        "area_km2": 1.605,
+        "buildings": 345,
+        "facilities": 8,
+        "hospitals": 3,
+        "elapsed_ms": 860.6
+      }
+    },
+    {
+      "check": "api: isochrone 15 min @3.6",
+      "ok": true,
+      "ms": 239.4,
+      "detail": {
+        "distance_budget_m": 881.4,
+        "area_km2": 0.7616,
+        "buildings": 118,
+        "facilities": 4,
+        "hospitals": 3,
+        "elapsed_ms": 235.6
+      }
+    },
+    {
+      "check": "api: GeoServer WFS proxy",
+      "ok": true,
+      "ms": 56.4,
+      "detail": {
+        "features": 5
+      }
+    },
+    {
+      "check": "api: client page",
+      "ok": true,
+      "ms": 15.8,
+      "detail": {
+        "bytes": 4386
+      }
+    }
+  ]
+}

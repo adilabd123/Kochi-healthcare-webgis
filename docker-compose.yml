@@ -4,10 +4,13 @@
 #   geoserver       GeoServer 2.28.3 (WMS / WFS / WCS / SLD)
 #   pg_tileserv     Mapbox Vector Tiles straight from PostGIS
 #   pg_featureserv  OGC API - Features straight from PostGIS
+#   api             FastAPI (Nominatim + pgRouting) serving the Leaflet client
 #
 # Containers talk to each other ONLY through Docker service hostnames on the
 # "webgis_net" bridge network (postgis:5432, geoserver:8080, pg_tileserv:7800,
-# pg_featureserv:9000). Host ports below are only for your browser / psql.
+# pg_featureserv:9000, api:8000). Host ports below are only for your browser / psql.
+# The api's PUBLIC_* variables are URLs handed to the BROWSER (which runs on the
+# Windows host), so they use localhost; the api itself never calls them.
 # The "127.0.0.1" inside healthchecks means "this same container", which is
 # how Docker healthchecks work; no container uses it to reach another one.
 #
@@ -48,7 +51,7 @@ services:
   geoserver:
     image: kartoza/geoserver:2.28.3
     container_name: kochi_geoserver
-    entrypoint: ["/bin/bash", "-c", "mkdir -p /opt/geoserver/data_dir && [ -f /opt/geoserver/data_dir/security/usergroup/default/users.xml ] || cp -r /usr/local/tomcat/security /usr/local/tomcat/workspaces /usr/local/tomcat/styles /usr/local/tomcat/layergroups /usr/local/tomcat/palettes /usr/local/tomcat/plugIns /usr/local/tomcat/user_projections /usr/local/tomcat/*.xml /opt/geoserver/data_dir/ 2>/dev/null || true; sed -i '/name=\"admin\"/s/password=\"[^\"]*\"/password=\"plain:'\"$GEOSERVER_ADMIN_PASSWORD\"'\"/' /opt/geoserver/data_dir/security/usergroup/default/users.xml; printf '%s\n' '<?xml version=\"1.0\" encoding=\"UTF-8\"?><web-app xmlns=\"http://xmlns.jcp.org/xml/ns/javaee\" version=\"4.0\"><filter><filter-name>CorsFilter</filter-name><filter-class>org.apache.catalina.filters.CorsFilter</filter-class><init-param><param-name>cors.allowed.origins</param-name><param-value>*</param-value></init-param><init-param><param-name>cors.allowed.methods</param-name><param-value>GET,POST,HEAD,OPTIONS,PUT,DELETE</param-value></init-param><init-param><param-name>cors.support.credentials</param-name><param-value>false</param-value></init-param></filter><filter-mapping><filter-name>CorsFilter</filter-name><url-pattern>/*</url-pattern></filter-mapping></web-app>' > /usr/local/tomcat/conf/web.xml; export JAVA_OPTS=\"-Djava.awt.headless=true -server -Xms${INITIAL_MEMORY:-1G} -Xmx${MAXIMUM_MEMORY:-2G} -DGEOSERVER_DATA_DIR=/opt/geoserver/data_dir -Dorg.geotools.referencing.forceXY=true -Dfile.encoding=UTF-8 -Duser.timezone=${TZ:-Asia/Kolkata}\"; exec /usr/local/tomcat/bin/catalina.sh run"]
+    entrypoint: ["/usr/local/tomcat/bin/catalina.sh", "run"]
     restart: unless-stopped
     depends_on:
       postgis:
@@ -56,6 +59,7 @@ services:
     environment:
       GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
       GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+      JAVA_OPTS: "-Xms1g -Xmx2g -Duser.timezone=Asia/Kolkata -DGEOSERVER_DATA_DIR=/opt/geoserver/data_dir"
       GEOSERVER_DATA_DIR: /opt/geoserver/data_dir
       INITIAL_MEMORY: ${GEOSERVER_INITIAL_MEMORY:-1G}
       MAXIMUM_MEMORY: ${GEOSERVER_MAXIMUM_MEMORY:-2G}
@@ -70,7 +74,7 @@ services:
       # When you create the PostGIS store in the GeoServer UI later, use
       #   host = postgis   port = 5432   database = ${POSTGRES_DB}
     ports:
-      - "${GEOSERVER_PORT:-8088}:8080"
+      - "${GEOSERVER_PORT:-8080}:8080"
     volumes:
       - geoserver_data:/opt/geoserver/data_dir
       - ./sld:/opt/sld:ro
@@ -122,6 +126,47 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+      start_period: 20s
+    networks:
+      - webgis_net
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    image: kochi-healthcare-api:latest
+    container_name: kochi_api
+    restart: unless-stopped
+    depends_on:
+      postgis:
+        condition: service_healthy
+      geoserver:
+        condition: service_started
+    environment:
+      # container-to-container (Docker service hostnames)
+      POSTGRES_HOST: postgis
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      GEOSERVER_INTERNAL_URL: http://geoserver:8080/geoserver
+      GEOSERVER_WORKSPACE: kochi
+      # browser-facing URLs (the browser runs on the host)
+      PUBLIC_GEOSERVER_URL: http://localhost:${GEOSERVER_PORT:-8080}/geoserver
+      PUBLIC_TILESERV_URL: http://localhost:${PG_TILESERV_PORT:-7800}
+      PUBLIC_FEATURESERV_URL: http://localhost:${PG_FEATURESERV_PORT:-9000}
+      NOMINATIM_USER_AGENT: ${NOMINATIM_USER_AGENT:-kochi-healthcare-webgis/1.0 (student project)}
+      TZ: Asia/Kolkata
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      # live-edit the client without rebuilding the image
+      - ./client:/app/client:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)\" || exit 1"]
+      interval: 20s
+      timeout: 6s
+      retries: 6
       start_period: 20s
     networks:
       - webgis_net

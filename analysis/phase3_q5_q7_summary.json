@@ -1,0 +1,28 @@
+{
+  "q5": {
+    "numberMatched": "88",
+    "gml_kb": 139.12,
+    "geojson_kb": 52.64,
+    "gml_first_pos": "10.009 76.2875",
+    "geojson_first_coords": [
+      76.2875,
+      10.009
+    ]
+  },
+  "q6": {
+    "changed_count": 10,
+    "median_ratio": 1.558,
+    "max_ratio": 4.029,
+    "worst_pt_id": 4,
+    "worst_lat": 10.021413,
+    "worst_lon": 76.311583,
+    "sl_name": "Kripa Diabetic Clinic",
+    "sl_m": 174.5,
+    "net_name": "Cee Ess English Medicals",
+    "net_m": 703.3
+  },
+  "q7": {
+    "net_beyond_proxy_pct": 2.37,
+    "buf_beyond_proxy_pct": 0.09
+  }
+}

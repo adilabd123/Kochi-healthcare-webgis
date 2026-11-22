@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kochi Healthcare WebGIS — MapLibre GL JS</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside id="panel">
+    <header>
+      <h1>Kochi Healthcare WebGIS</h1>
+      <p class="sub">Edappally · Palarivattom · Kaloor — MapLibre GL JS</p>
+    </header>
+
+    <section>
+      <h2>1. Scenario</h2>
+      <label>Facility set
+        <select id="facilitySet">
+          <option value="all">All healthcare (93)</option>
+          <option value="clinical">Clinical — no pharmacy / lab</option>
+          <option value="hospital">Hospital-tagged</option>
+        </select>
+      </label>
+      <label>Walking speed
+        <select id="speed">
+          <option value="4.8">4.8 km/h — adult</option>
+          <option value="3.6">3.6 km/h — elderly</option>
+        </select>
+      </label>
+      <label>Isochrone time
+        <select id="minutes">
+          <option value="5">5 min</option>
+          <option value="10">10 min</option>
+          <option value="15" selected>15 min</option>
+        </select>
+      </label>
+    </section>
+
+    <section>
+      <h2>2. Layers</h2>
+      <div class="layers">
+        <label><input type="checkbox" id="chkBuildingsMvt" checked> Buildings walk time (pg_tileserv MVT)</label>
+        <label><input type="checkbox" id="chkFacilities" checked> Facilities (pg_featureserv GeoJSON)</label>
+        <label><input type="checkbox" id="chkServiceWms" checked> Service areas 5/10/15 min (WMS CQL)</label>
+        <label><input type="checkbox" id="chkStudyWms" checked> Study area boundary (WMS)</label>
+        <label><input type="checkbox" id="chkGapsWms"> Elderly hospital-access gaps (WMS)</label>
+        <label><input type="checkbox" id="chkEdgesWms"> Walk network edges (WMS)</label>
+        <label><input type="checkbox" id="chkH3Res9"> H3 Res 9 MAUP grid (pg_tileserv)</label>
+        <label><input type="checkbox" id="chkH3Res8"> H3 Res 8 MAUP grid (pg_tileserv)</label>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Origin &amp; Routing</h2>
+      <form id="searchForm" autocomplete="off">
+        <input id="searchInput" type="search" placeholder="Search address (Nominatim)…" minlength="3" required>
+        <button type="submit">Search</button>
+      </form>
+      <ul id="searchResults" class="results"></ul>
+      <p class="hint">…or click anywhere on the map.</p>
+      <p id="originInfo" class="info">No origin selected.</p>
+      <div class="buttons">
+        <button id="btnNearest" disabled>Nearest by walking</button>
+        <button id="btnIsochrone" disabled>Walking isochrone</button>
+        <button id="btnClear" class="secondary">Clear</button>
+      </div>
+      <ol id="nearestList" class="results"></ol>
+      <p id="isoInfo" class="info"></p>
+    </section>
+
+    <section>
+      <h2>4. OGC WFS 2.0</h2>
+      <div class="buttons">
+        <button id="btnWfsHospitals" class="secondary">WFS 2.0: hospitals</button>
+      </div>
+      <p id="wfsInfo" class="info"></p>
+    </section>
+
+    <section>
+      <h2>5. Coverage (Phase 2)</h2>
+      <table id="coverageTable">
+        <thead><tr><th>Speed</th><th>5 min</th><th>10 min</th><th>15 min</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="hint">Share of the 5,321 buildings within each walking time of the selected facility set.</p>
+    </section>
+
+    <footer>
+      <span id="status">Loading…</span><br>
+      Data © OpenStreetMap contributors (ODbL).
+    </footer>
+  </aside>
+  <main id="map"></main>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

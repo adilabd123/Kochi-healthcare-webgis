@@ -1,0 +1,177 @@
+{
+  "generated_at_utc": "2026-11-22T18:08:16+00:00",
+  "geoserver": "http://localhost:8088/geoserver",
+  "geoserver_version": "2.28.3",
+  "workspace": "kochi",
+  "bbox_lonlat": [
+    76.28182921638344,
+    9.982060332295204,
+    76.32217350174025,
+    10.033938975658572
+  ],
+  "wms": {
+    "v111_epsg4326_lonlat": {
+      "file": "wms111_epsg4326.png",
+      "http": 200,
+      "content_type": "image/png",
+      "bytes": 270216,
+      "request": {
+        "service": "WMS",
+        "request": "GetMap",
+        "layers": "kochi:study_area,kochi:building_access,kochi:healthcare",
+        "styles": "",
+        "format": "image/png",
+        "transparent": "true",
+        "width": 600,
+        "height": 772,
+        "version": "1.1.1",
+        "srs": "EPSG:4326",
+        "bbox": "76.28182921638344,9.982060332295204,76.32217350174025,10.033938975658572"
+      }
+    },
+    "v130_epsg4326_latlon": {
+      "file": "wms130_epsg4326.png",
+      "http": 200,
+      "content_type": "image/png",
+      "bytes": 270216,
+      "request": {
+        "service": "WMS",
+        "request": "GetMap",
+        "layers": "kochi:study_area,kochi:building_access,kochi:healthcare",
+        "styles": "",
+        "format": "image/png",
+        "transparent": "true",
+        "width": 600,
+        "height": 772,
+        "version": "1.3.0",
+        "crs": "EPSG:4326",
+        "bbox": "9.982060332295204,76.28182921638344,10.033938975658572,76.32217350174025"
+      }
+    },
+    "v130_epsg4326_WRONG_lonlat": {
+      "file": "wms130_epsg4326_wrong_axis.png",
+      "http": 200,
+      "content_type": "image/png",
+      "bytes": 12098,
+      "request": {
+        "service": "WMS",
+        "request": "GetMap",
+        "layers": "kochi:study_area,kochi:building_access,kochi:healthcare",
+        "styles": "",
+        "format": "image/png",
+        "transparent": "true",
+        "width": 600,
+        "height": 772,
+        "version": "1.3.0",
+        "crs": "EPSG:4326",
+        "bbox": "76.28182921638344,9.982060332295204,76.32217350174025,10.033938975658572"
+      }
+    },
+    "v130_crs84_lonlat": {
+      "file": "wms130_crs84.png",
+      "http": 200,
+      "content_type": "image/png",
+      "bytes": 270216,
+      "request": {
+        "service": "WMS",
+        "request": "GetMap",
+        "layers": "kochi:study_area,kochi:building_access,kochi:healthcare",
+        "styles": "",
+        "format": "image/png",
+        "transparent": "true",
+        "width": 600,
+        "height": 772,
+        "version": "1.3.0",
+        "crs": "CRS:84",
+        "bbox": "76.28182921638344,9.982060332295204,76.32217350174025,10.033938975658572"
+      }
+    },
+    "cql_service_areas_hospital_3p6": {
+      "file": "service_areas_hospital_3p6.png",
+      "http": 200,
+      "content_type": "image/png",
+      "bytes": 252498,
+      "request": {
+        "service": "WMS",
+        "request": "GetMap",
+        "layers": "kochi:study_area,kochi:service_areas,kochi:healthcare",
+        "styles": "",
+        "format": "image/png",
+        "transparent": "true",
+        "width": 600,
+        "height": 772,
+        "version": "1.1.1",
+        "srs": "EPSG:4326",
+        "bbox": "76.28182921638344,9.982060332295204,76.32217350174025,10.033938975658572",
+        "CQL_FILTER": "INCLUDE;facility_set='hospital' AND speed_kmh=3.6;type='hospital'"
+      }
+    }
+  },
+  "wfs": {
+    "cql_type_hospital": {
+      "http": 200,
+      "features": 32,
+      "numberMatched": 32
+    },
+    "fes_clinical_and_hospital_gt10min_at_3p6": {
+      "http": 200,
+      "features": 15,
+      "names": [
+        "(unnamed)",
+        "ARYA VAIDYA SHALA",
+        "Al Mekha Skin Clinic",
+        "Alexander Eye Centre",
+        "Cochin Clinical Homeo Pharmacy",
+        "DDRC SRL DIAGNOSTICS PVT LTD",
+        "Dr.Rajeev's clinic",
+        "ESI Dispensary",
+        "Eye Specialist Dr. Shivaji Clinic",
+        "NEDUMPARAMBIL CLINIC",
+        "Optima Homeocare",
+        "Quick Heal Homeopathic Clinic",
+        "Rite Cure Health Services",
+        "prayatna therapy center",
+        "raha ayurveda"
+      ],
+      "error": null
+    }
+  },
+  "capabilities": {
+    "WMS_1.1.1": {
+      "http": 200,
+      "bytes": 232075,
+      "layers_found": [
+        "study_area",
+        "healthcare",
+        "service_areas",
+        "building_access",
+        "walk_edges",
+        "hospital_access_gaps"
+      ]
+    },
+    "WMS_1.3.0": {
+      "http": 200,
+      "bytes": 232157,
+      "layers_found": [
+        "study_area",
+        "healthcare",
+        "service_areas",
+        "building_access",
+        "walk_edges",
+        "hospital_access_gaps"
+      ]
+    },
+    "WFS_2.0.0": {
+      "http": 200,
+      "bytes": 96861,
+      "layers_found": [
+        "study_area",
+        "healthcare",
+        "service_areas",
+        "building_access",
+        "walk_edges",
+        "hospital_access_gaps"
+      ]
+    }
+  }
+}

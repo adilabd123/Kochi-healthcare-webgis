@@ -1,0 +1,17 @@
+# Keep the API build context small: only api/ and client/ are copied.
+.git
+.github
+.venv
+venv
+**/__pycache__
+**/*.pyc
+.env
+analysis
+study
+sql
+sld
+k8s
+*.gpkg
+*.graphml
+*.geojson
+*.zip

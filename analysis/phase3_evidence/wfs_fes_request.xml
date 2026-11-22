@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wfs:GetFeature service="WFS" version="2.0.0" outputFormat="application/json"
+    xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:fes="http://www.opengis.net/fes/2.0">
+  <wfs:Query typeNames="healthcare">
+    <fes:Filter>
+      <fes:And>
+        <fes:PropertyIsEqualTo>
+          <fes:ValueReference>is_clinical</fes:ValueReference>
+          <fes:Literal>true</fes:Literal>
+        </fes:PropertyIsEqualTo>
+        <fes:PropertyIsGreaterThan>
+          <fes:ValueReference>hospital_t3p6_min</fes:ValueReference>
+          <fes:Literal>10</fes:Literal>
+        </fes:PropertyIsGreaterThan>
+      </fes:And>
+    </fes:Filter>
+  </wfs:Query>
+</wfs:GetFeature>

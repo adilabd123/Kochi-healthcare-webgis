@@ -1,0 +1,42 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color: #111827; }
+body { display: flex; }
+#panel { width: 360px; min-width: 300px; height: 100%; overflow-y: auto; background: #f9fafb; border-right: 1px solid #e5e7eb; padding: 14px 16px; font-size: 13px; }
+#map { flex: 1; height: 100%; }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #374151; margin: 0 0 8px; }
+.sub { margin: 4px 0 0; color: #6b7280; }
+section { border-top: 1px solid #e5e7eb; padding: 12px 0; }
+label { display: block; margin-bottom: 8px; color: #374151; }
+select, input[type=search] { width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: #fff; margin-top: 3px; }
+form { display: flex; gap: 6px; }
+form input { margin-top: 0; }
+button { padding: 6px 10px; border: 0; border-radius: 6px; background: #1d4ed8; color: #fff; font-size: 12.5px; cursor: pointer; }
+button:hover { background: #1e40af; }
+button:disabled { background: #9ca3af; cursor: not-allowed; }
+button.secondary { background: #e5e7eb; color: #111827; }
+button.secondary:hover { background: #d1d5db; }
+.buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.hint { color: #6b7280; margin: 6px 0; }
+.info { color: #1f2937; margin: 6px 0; }
+.results { margin: 6px 0; padding-left: 18px; }
+.results li { margin: 4px 0; cursor: pointer; }
+.results li:hover { text-decoration: underline; }
+ul.results { list-style: none; padding-left: 0; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: right; padding: 4px 6px; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+#legend div { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+#legend i { width: 16px; height: 12px; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
+#legend i.dot { border-radius: 50%; width: 12px; }
+.legend-title { font-weight: 600; margin-top: 8px !important; }
+footer { color: #6b7280; font-size: 11.5px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+.popup h3 { margin: 0 0 4px; font-size: 14px; }
+.popup table { font-size: 12px; }
+.popup td { border: 0; padding: 1px 4px; }
+.error { color: #b91c1c; }
+@media (max-width: 760px) {
+  body { flex-direction: column-reverse; }
+  #panel { width: 100%; height: 45%; border-right: 0; border-top: 1px solid #e5e7eb; }
+  #map { height: 55%; }
+}

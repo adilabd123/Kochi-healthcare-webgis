@@ -175,4 +175,156 @@ For an exhaustive inventory, Overpass with explicit tags is the right source. No
 
 ---
 
-*Study note S1 was corrected in this phase: Web Mercator area inflation at Kochi is 3.77 % against the WGS84 ellipsoid, not the 3.1 % that sec²φ alone predicts.*
+## Phase 2 — Walking accessibility to healthcare
+
+Raw outputs: `analysis/phase2_run_output.txt`, `analysis/phase2_summary.json`, `analysis/phase2_accessibility_32643.gpkg`.
+
+### Method
+
+| Item | Value |
+|---|---|
+| Network | `kochi_walk_2km.graphml` projected to EPSG:32643: 11,665 nodes, 27,936 directed edges merged into 13,880 undirected street segments (people can walk both ways) |
+| Algorithm | Multi-source Dijkstra: all facilities of a set start the search at once, so each node gets the distance to its *nearest* facility and that facility's id |
+| Network distance | building → nearest node (snap) + shortest path + node → facility (snap). Facility snap: median 25.8 m, max 92.8 m (none > 250 m). Building snap: median 30.6 m, p95 69.9 m |
+| Speeds | 4.8 km/h = 80 m/min (adult); 3.6 km/h = 60 m/min (elderly) |
+| Thresholds | 5 / 10 / 15 min = 400 / 800 / 1,200 m at 4.8 km/h and 300 / 600 / 900 m at 3.6 km/h |
+| Facility sets | **all** = 93 points; **hospital** = 32 hospital-tagged points; **clinical** = 61 (all minus 28 pharmacies and 4 laboratories). They snap to 90, 32 and 60 distinct nodes respectively |
+| Service areas | Every street segment reachable within the budget, partial segments included, buffered 50 m and dissolved (EPSG:32643, also published in EPSG:4326) |
+| Coverage figures | Each building's own network distance, not a polygon overlay |
+
+### Share of the 5,321 buildings within walking time
+
+| Facility set | Speed | 5 min | 10 min | 15 min | Buildings beyond 15 min | Median / p90 time |
+|---|---|---|---|---|---|---|
+| all | 4.8 km/h | 44.86 % | 87.84 % | **97.31 %** | 143 | 5.4 / 10.6 min |
+| all | 3.6 km/h | 29.19 % | 72.37 % | **91.99 %** | 426 | 7.2 / 14.2 min |
+| clinical | 4.8 km/h | 34.58 % | 82.97 % | **96.47 %** | 188 | 6.3 / 11.6 min |
+| clinical | 3.6 km/h | 21.41 % | 63.90 % | **88.87 %** | 592 | 8.4 / 15.5 min |
+| hospital | 4.8 km/h | 18.19 % | 59.12 % | **87.16 %** | 683 | 8.9 / 15.7 min |
+| hospital | 3.6 km/h | 10.11 % | 38.47 % | **68.33 %** | **1,685** | 11.8 / 20.9 min |
+
+### Share of the 20.8 km² study area inside the service areas
+
+| Facility set | Speed | 5 min | 10 min | 15 min |
+|---|---|---|---|---|
+| all | 4.8 km/h | 47.87 % | 82.35 % | 90.21 % (18.76 km²) |
+| all | 3.6 km/h | 34.69 % | 69.21 % | 85.75 % |
+| clinical | 4.8 km/h | 38.98 % | 77.81 % | 89.27 % |
+| clinical | 3.6 km/h | 26.70 % | 61.75 % | 82.35 % |
+| hospital | 4.8 km/h | 23.60 % | 60.15 % | 82.90 % (17.24 km²) |
+| hospital | 3.6 km/h | 15.59 % | 41.49 % | 68.04 % |
+
+### Findings
+
+**1. Almost everyone is within 15 minutes of *some* healthcare point, but that headline is flattered by pharmacies.** At 4.8 km/h, 97.31 % of buildings are within a 15-minute walk of at least one of the 93 points, and the median walk is 5.4 minutes. However, 28 of the 93 points are pharmacies, and the largest "all" catchment belongs to a pharmacy (Cee Ess English Medicals, 280 buildings). Restricting to places where you are actually treated (*clinical*, 61 points) changes little at 15 minutes (96.47 %) but a lot at 5 minutes (44.86 % → 34.58 %).
+
+**2. Hospital access is the real gap, and slower walking widens it sharply.** At 4.8 km/h, 87.16 % of buildings reach a hospital-tagged facility within 15 minutes. At 3.6 km/h this falls to **68.33 %**: 1,002 more buildings lose 15-minute access, and **1,685 buildings (31.7 %)** are more than a 900 m walk from any hospital-tagged facility. Speed only rescales time (4.8 / 3.6 = 1.333), as the medians show (8.9 min × 1.333 ≈ 11.8 min). The coverage loss is non-linear, though: a 25 % slower walk removes 18.8 percentage points of 15-minute hospital coverage, because many buildings sit 900–1,200 m from a hospital. The view `v_hospital_access_gaps_4326` maps these buildings for GeoServer (Phase 3).
+
+**3. Straight-line buffers overstate access, most of all at short times and for sparse facilities.**
+
+| Scenario | Network | Straight line | Overstatement |
+|---|---|---|---|
+| all, 5 min @ 4.8 (400 m) | 44.86 % | 80.02 % | +35.16 pts |
+| clinical, 5 min @ 4.8 | 34.58 % | 73.61 % | +39.03 pts |
+| hospital, 10 min @ 3.6 (600 m) | 38.47 % | 71.88 % | +33.41 pts |
+| hospital, 15 min @ 3.6 (900 m) | 68.33 % | 92.60 % | +24.27 pts |
+| all, 15 min @ 4.8 (1,200 m) | 97.31 % | 99.98 % | +2.67 pts |
+
+The 15-minute "all" row hardly differs only because nearly every building is within 1.2 km of *something* in a straight line. When the radius is large relative to the spacing between facilities, both methods saturate. The difference is decisive exactly where planning decisions are made: short walks, elderly speeds and scarce services such as hospitals.
+
+**4. Detour ratios (network ÷ straight line) are higher than the textbook 1.2–1.4, partly because of how they are measured.** Median ratios are 1.694 (all), 1.698 (clinical) and 1.591 (hospital), with p90 values of 2.43–2.66 (buildings ≥ 100 m from a facility in a straight line). Three effects combine:
+- The network distance includes both snapping legs (medians 30.6 m + 25.8 m). That is a large share of a median straight-line distance of only 229 m. It explains why the hospital ratio, where distances are longer, is the lowest.
+- The ratio compares the network distance to the *network-nearest* facility with the straight-line distance to the *straight-line-nearest* one. These can be different facilities, which makes the ratio a lower bound on circuity to any single facility.
+- Genuine circuity remains: the street pattern, crossing points over major roads and the railway, and footpaths that may be missing from OSM.
+
+So these values should be quoted as "network-path to straight-line ratios including network access legs", not as pure street circuity.
+
+**5. Hospitals are close to the other facilities.** 92 of 93 healthcare points (all 32 hospital-tagged points plus 60 of the 61 others) are within a 15-minute walk (4.8 km/h) of a hospital-tagged facility. Within 5 minutes, 24 of the 61 others are, which is consistent with the clustering of clinics and pharmacies around hospitals seen in Q3b.
+
+**6. Land coverage is lower than building coverage.** The 15-minute "all" service area covers 90.21 % of the study area but 97.31 % of buildings. The land left uncovered is sparsely built, so building-weighted access is the more meaningful measure. The service areas also spill 7.68 km² beyond the study boundary ("all", 15 min @ 4.8) because the network extends 2 km outside it.
+
+**7. The "hospital" set is an OSM tag, not a clinical definition.** The largest hospital catchments are Primary Health Centre Thrikakkara (574 buildings), Ephphatha Softech Speech and Hearing Centre (389), MAJ Hospital (374), Vasan Eye Care Hospital, Palarivattom (352) and Focus Eye Hospital (307). These are a primary health centre, a speech and hearing centre and two eye hospitals. Hospital-tagged access therefore probably **overstates** access to general or emergency hospital care, adding to the over-tagging seen in Q3. A curated hospital list from an official source would be needed for that question.
+
+**8. Facility load is uneven.** Within 15 minutes at 4.8 km/h, Rite Cure Health Services is the nearest clinical facility for 437 buildings, Dr. Rajeev's clinic for 305 and Focus Eye Hospital for 294. Catchments count buildings, not people (see limitations).
+
+### Limitations
+- **Edge effect.** Healthcare points were extracted only inside the study area. Buildings near the edge may in reality be closer to facilities just outside it, so their access is under-estimated.
+- **Buildings, not people.** No population or floor-area weighting is used. A tower block and a shed count the same (a form of the MAUP discussed in S3).
+- **Study area shape.** The study area is the 4.0 × 5.2 km fallback rectangle, not official ward boundaries, so ward-level statements are approximate.
+- **Network.** OSM footpath completeness is not verified. Walking is assumed possible on every edge in both directions. Waiting at crossings, slopes, flooding and footpath condition are ignored, and speed is constant.
+- **Snapping.** Snapping is a straight line to the nearest node: one representative point per building and one point per facility, so campus entrances are not modelled.
+- **Service-area polygons.** These are 50 m buffers around reached streets. A few counted buildings set further back fall outside them, which is why coverage figures use per-building distances.
+- **Data quality.** The probable Thammanam duplicate (Q3b) and hospital over-tagging (finding 7) both inflate the hospital set.
+
+---
+
+## Phase 3 — Publishing and WebGIS verification
+
+### What was built
+
+| Component | Role | Source |
+|---|---|---|
+| `sql/phase3_views.sql` | GiST and B-tree indexes on all serving and routing tables; views `v_hospital_access_gaps_4326` and `v_coverage_summary`; MVT function `public.building_walk_time(z, x, y, facility_set, speed_kmh)` | PostGIS |
+| GeoServer workspace `kochi` | WMS/WFS layers `study_area`, `healthcare`, `service_areas`, `building_access`, `walk_edges`, `hospital_access_gaps`, each with its SLD from `sld/` | `analysis/phase3_publish_geoserver.py` |
+| pg_tileserv | Vector tiles of buildings coloured by walking time; set and speed are chosen per request | `public.building_walk_time` |
+| pg_featureserv | OGC API – Features collections for facilities, service areas, building and node access | Phase 2 tables |
+| FastAPI (`api/`) | Nominatim geocoding (from Nearby-Services), pgRouting nearest-facility routes and isochrones from any point, coverage table, same-origin GeoServer OWS proxy, Leaflet client | `http://localhost:8000` |
+
+### SQL helpers (`docker exec ... -f /sql/phase3_views.sql`)
+
+| Check | Result |
+|---|---|
+| `elderly_hospital_gap_buildings` (should equal 5,321 − 3,636 = 1,685 from Phase 2) | [PASTE REAL OUTPUT HERE] |
+| `also_gap_at_4p8` (should equal 683) | [PASTE REAL OUTPUT HERE] |
+| `tile_bytes_all_4p8` / `tile_bytes_hospital_3p6` (z15 tile 23329/15468) | [PASTE REAL OUTPUT HERE] |
+
+### GeoServer evidence (`analysis/phase3_geoserver_checks.json`, `analysis/phase3_evidence/`)
+
+| Request | HTTP | Bytes / features | Interpretation |
+|---|---|---|---|
+| WMS 1.1.1 `SRS=EPSG:4326`, BBOX lon,lat | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Map of the study area |
+| WMS 1.3.0 `CRS=EPSG:4326`, BBOX lat,lon | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Same map: correct 1.3.0 axis order |
+| WMS 1.3.0 `CRS=EPSG:4326`, BBOX lon,lat (deliberately wrong) | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Read as 76.3° N, 10.0° E (near Svalbard), so the image should be empty |
+| WMS 1.3.0 `CRS=CRS:84`, BBOX lon,lat | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | CRS:84 keeps lon,lat order in 1.3.0 |
+| WMS + `CQL_FILTER` hospital service areas @ 3.6 km/h | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Vendor filter on one layer |
+| WFS 2.0 `CQL_FILTER=type='hospital'` (data has 32) | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | |
+| WFS 2.0 FES 2.0 XML: `is_clinical = true AND hospital_t3p6_min > 10` | [PASTE REAL OUTPUT HERE] | [PASTE REAL OUTPUT HERE] | Clinical facilities more than 10 elderly-minutes from a hospital |
+
+[PASTE SCREENSHOT HERE: wms130_epsg4326.png next to wms130_epsg4326_wrong_axis.png]
+
+### End-to-end check (`analysis/phase3_stack_check.json`)
+
+| Item | Result |
+|---|---|
+| Checks passed | [PASTE REAL OUTPUT HERE] / 18 |
+| `api: nearest hospital` at the study centre: top facility, network m, straight m, ms | [PASTE REAL OUTPUT HERE] |
+| `api: isochrone 15 min @3.6`: area km², buildings, hospitals | [PASTE REAL OUTPUT HERE] |
+| pgRouting vs Phase 2: `/api/nearest` network m minus origin snap m, compared with `node_access_32643.hospital_dist_m` for the snapped node | [PASTE REAL OUTPUT HERE] |
+
+[PASTE SCREENSHOT HERE: http://localhost:8000 with buildings by walking time, service areas and a nearest-hospital route]
+
+---
+
+*Study note S1 was corrected in Phase 2: Web Mercator area inflation at Kochi is 3.77 % against the WGS84 ellipsoid, not the 3.1 % that sec²φ alone predicts.*
+
+---
+
+## Q9 — MapLibre GL JS Client Architecture, Payload Sizes & Runtime Performance
+
+The frontend (`client/index.html`, `client/app.js`) is implemented in **MapLibre GL JS v4.7.1** over a containerized multi-service stack (`FastAPI`, `PostGIS/pgRouting`, `GeoServer 2.28.3`, `pg_tileserv`, and `pg_featureserv`):
+
+| Interaction / Layer | Service & Protocol | Payload Size | Latency (`Wall` / `Server`) | Rendering & Caching Behavior |
+| :--- | :--- | :--- | :--- | :--- |
+| App configuration (`/api/config`) | FastAPI REST (`:8000`) | `496 B` | `148.4 ms` | Fetched once on boot to configure service URLs and map bounds |
+| Coverage summary (`/api/stats/coverage`) | FastAPI REST (`:8000`) | `4.79 KB` (`4,789 B`) | `102.9 ms` | Populates scenario comparison table (`4.8` vs. `3.6 km/h`) |
+| Healthcare facilities (`facility_access_4326`) | `pg_featureserv` OGC API Features GeoJSON (`:9000`) | `50.80 KB` (`50,803 B`) | `97.6 ms` | Loaded once as a `geojson` source (`93` features); instant client-side styling & popups |
+| Building walk-time polygons (`14/11664/7735.pbf`) | `pg_tileserv` Mapbox Vector Tiles (`:7800`) | `22.61 KB` (`22,606 B`) | `21.4 ms` | GPU-accelerated WebGL fill/line rendering; dynamically parameterized by `facility_set` and `speed_kmh` |
+| H3 Res 9 MAUP grid (`14/11664/7735.pbf`) | `pg_tileserv` Mapbox Vector Tiles (`:7800`) | `3.79 KB` (`3,788 B`) | `50.5 ms` | Lightweight vector tile overlay toggled on demand without re-fetching base layers |
+| Service areas `5/10/15 min` (`kochi:service_areas`) | GeoServer WMS `1.1.1` PNG (`:8088`, `CQL_FILTER`) | `37.98 KB` (`37,978 B`) | `92.5 ms` | Server-rendered `256x256` raster tiles in `EPSG:3857`; re-requested when `CQL_FILTER` changes |
+| WFS 2.0 hospitals (`CQL_FILTER=type='hospital'`) | GeoServer WFS `2.0.0` GeoJSON (`:8088`) | `19.46 KB` (`19,459 B`) | `74.5 ms` | On-demand vector query (`22` hospital features) rendered into a dedicated GeoJSON highlight layer |
+| Nearest `k=5` walking facilities (`/api/nearest`) | FastAPI + `pgRouting` (`:8000`) | `2.10 KB` (`2,099 B`) | `1,340.0 ms` wall / `89.2 ms` DB | Snaps origin to nearest walk node and runs `pgr_dijkstra` shortest path + route geometry |
+| `15-min` (`1,200 m`) walking isochrone (`/api/isochrone`) | FastAPI + `pgRouting` (`:8000`) | `38.72 KB` (`38,720 B`) | `4,762.1 ms` wall / `1,386.2 ms` DB | Runs `pgr_drivingDistance`, builds concave/buffered catchment polygon, and aggregates enclosed buildings/facilities |
+
+* **Architectural trade-offs observed:**
+  * **Vector tiles (`pg_tileserv` `.pbf`) vs. WMS PNG (`GeoServer`):** At zoom `14`, a single `building_walk_time` `.pbf` tile (`22.61 KB`) carries full attribute metadata (`walk_min`, `dist_m`, `band`, `name`) for instant WebGL hover/click popups without extra `GetFeatureInfo` roundtrips, whereas WMS `GetMap` (`37.98 KB` per `256x256` tile) offloads complex polygon dissolves (`service_areas`) to the server.
+  * **Static/precomputed layers vs. live `pgRouting`:** Precomputed PostGIS views/tables served via `pg_tileserv` and `pg_featureserv` respond in `21–98 ms`, whereas live network traversal (`pgr_drivingDistance` + spatial aggregation in `/api/isochrone`) takes `~1.39 s` in PostGIS and `~4.76 s` end-to-end, justifying precomputation for city-wide layers and on-demand execution only for user-clicked origins.

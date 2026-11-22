@@ -1,0 +1,91 @@
+{
+  "generated_at_utc": "2026-11-22T18:13:08+00:00",
+  "buffer_m": 500.0,
+  "tiles": [
+    "Copernicus_DSM_COG_10_N09_00_E076_00_DEM.tif",
+    "Copernicus_DSM_COG_10_N10_00_E076_00_DEM.tif"
+  ],
+  "local_dem": {
+    "file": "kochi_dem.tif",
+    "size_bytes": 111375,
+    "width": 165,
+    "height": 202,
+    "crs": "EPSG:4326",
+    "bounds": [
+      76.279102,
+      9.979991,
+      76.324936,
+      10.036102
+    ],
+    "cell_deg": [
+      0.0002777777777777778,
+      0.0002777777777777778
+    ],
+    "cell_m_approx": [
+      30.5,
+      30.7
+    ],
+    "valid_cells": 32945,
+    "min_m": -11.3,
+    "max_m": 31.25,
+    "mean_m": 7.29,
+    "p02_m": 1.0,
+    "p98_m": 13.92,
+    "centroid": {
+      "lat": 10.008,
+      "lon": 76.302,
+      "elevation_m": 9.43
+    },
+    "inside_study_area": {
+      "cells": 22217,
+      "min_m": -11.3,
+      "max_m": 31.25,
+      "mean_m": 7.42,
+      "pct_below_5m": 16.15
+    }
+  },
+  "geoserver_version": "2.28.3",
+  "checks": {
+    "wms_getmap": {
+      "http": 200,
+      "content_type": "image/png",
+      "bytes": 134045,
+      "file": "dem_wms.png",
+      "ok": true
+    },
+    "wms_getfeatureinfo_centroid": {
+      "http": 200,
+      "elevation_m_geoserver": 9.426982879638672,
+      "elevation_m_local": 9.43
+    },
+    "wcs_getcapabilities": {
+      "http": 200,
+      "bytes": 636635,
+      "coverage_id": "kochi__dem",
+      "listed": true
+    },
+    "wcs_describecoverage": {
+      "http": 200,
+      "bytes": 3572
+    },
+    "wcs_getcoverage": {
+      "http": 200,
+      "content_type": "image/tiff",
+      "bytes": 26004,
+      "subset_lonlat": [
+        76.292,
+        9.998,
+        76.312,
+        10.018
+      ],
+      "file": "dem_wcs_subset.tif",
+      "width": 72,
+      "height": 72,
+      "crs": "EPSG:4326",
+      "mean_m": 8.07,
+      "min_m": -1.31,
+      "max_m": 21.0,
+      "local_same_window_mean_m": 8.07
+    }
+  }
+}
